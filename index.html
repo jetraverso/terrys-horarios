@@ -233,7 +233,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .note{background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink-2)}
 
 /* ---------- kiosk ---------- */
-#kiosk{position:fixed;inset:0;z-index:100;background:var(--brand);color:var(--brand-ink);display:none;flex-direction:column;padding:28px;overflow:auto}
+#kiosk{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:var(--brand);color:var(--brand-ink);display:none;flex-direction:column;padding:28px;overflow:auto}
 #kiosk.on{display:flex}
 .k-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
 .k-clock{font-family:var(--display);font-size:clamp(64px,12vw,120px);line-height:.9;letter-spacing:.02em}
@@ -253,7 +253,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .k-emp.dentro .r,.k-emp.dentro .st{color:rgba(255,255,255,.85)}
 .k-emp.dentro .st{font-weight:700}
 .k-emp .hecho{position:absolute;top:14px;right:14px;font-size:12px;font-weight:700;opacity:.7}
-.k-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+.k-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
 .k-modal.on{display:flex}
 .k-box{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px;width:min(420px,100%);text-align:center;box-shadow:var(--shadow)}
 .k-box h2{font-family:var(--display);font-size:40px;letter-spacing:.03em}
@@ -277,11 +277,11 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .k-act .ghost{background:none;border:0;color:var(--muted);padding:8px;font-weight:600}
 .k-done{font-family:var(--display);font-size:30px;margin-top:12px}
 
-#fotoBig{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#fotoBig{position:fixed;top:0;left:0;right:0;bottom:0;z-index:120;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;cursor:zoom-out}
 #fotoBig.on{display:flex}
 #fotoBig img{max-width:92vw;max-height:92vh;border-radius:12px;transform:scaleX(-1)}
 /* ---------- bloqueo (modo Supabase) ---------- */
-#lock{position:fixed;inset:0;z-index:130;background:var(--brand);color:var(--brand-ink);display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:18px}
+#lock{position:fixed;top:0;left:0;right:0;bottom:0;z-index:130;background:var(--brand);color:var(--brand-ink);display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:18px}
 #lock.on{display:flex}
 #lock .wordmark{font-size:40px}
 #lock .k-box{color:var(--ink)}
@@ -474,10 +474,14 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 </div>
 
 <script>
+window.addEventListener('error',function(ev){ try{ var el=document.getElementById('jsErr'); if(!el){ el=document.createElement('div'); el.id='jsErr'; el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999;background:#b3261e;color:#fff;padding:10px 14px;font:14px/1.4 -apple-system,Helvetica,sans-serif'; document.body.appendChild(el); } el.textContent='La página no pudo arrancar en este navegador: '+(ev.message||ev.error)+' (línea '+ev.lineno+'). Avisale a Juan con este texto.'; }catch(e){} });
+</script>
+<script>
 /* ======================= utilidades ======================= */
 const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const clon=o=>JSON.parse(JSON.stringify(o));
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const fromIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
@@ -492,7 +496,7 @@ const nowHM=()=>{const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinu
 const $=id=>document.getElementById(id);
 const ROLES={cocina:{label:'Cocina',short:'coc',cls:'c'},camarero:{label:'Camarero',short:'cam',cls:'s'},dueno:{label:'Dueño',short:'due',cls:'d'}};
 const rolLabel=r=>(ROLES[r]||ROLES.camarero).label; const rolCls=r=>(ROLES[r]||ROLES.camarero).cls;
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ======================= datos ======================= */
 const DEF_CONFIG={
@@ -514,7 +518,7 @@ const DEF_CONFIG={
   fotos:true,
   pagos:{base:'turno',recargo:0,emp:{}}
 };
-let config=structuredClone(DEF_CONFIG);
+let config=clon(DEF_CONFIG);
 const meses={};            // 'YYYY-MM' -> {turnos:{fecha:{empId:{m:entry,n:entry}}}}
 let db=null, downloads=null, assets=null;
 let mode='local';          // 'db' (artifact de claude.ai) | 'sb' (Supabase) | 'local' (solo este dispositivo)
@@ -556,9 +560,10 @@ function cleanMes(raw){const out={turnos:{},ajustes:{}};const aj=(raw&&raw.ajust
 
 const store={
   async init(){
-    try{ db=await window.claude?.use?.('db'); }catch(e){ db=null; }
-    try{ downloads=await window.claude?.use?.('downloads'); }catch(e){ downloads=null; }
-    try{ assets=await window.claude?.use?.('assets'); }catch(e){ assets=null; }
+    const cl=window.claude&&typeof window.claude.use==='function'?window.claude:null;
+    try{ db=cl?await cl.use('db'):null; }catch(e){ db=null; }
+    try{ downloads=cl?await cl.use('downloads'):null; }catch(e){ downloads=null; }
+    try{ assets=cl?await cl.use('assets'):null; }catch(e){ assets=null; }
     if(downloads){ $('btnCsv').hidden=false; $('btnCsvS').hidden=false; }
     if(db){
       mode='db'; $('sync').textContent='sincronizado';
@@ -713,16 +718,16 @@ $('connGo').onclick=async()=>{
 };
 $('connOff').onclick=()=>{ if(confirm('¿Desconectar de Supabase? Los datos quedan en Supabase; esta página pasa a guardar solo en este dispositivo.')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
 function mergeConfig(c){
-  const out=structuredClone(DEF_CONFIG);
-  if(Array.isArray(c.empleados)) out.empleados=out.empleados.map((d,i)=>Object.assign({},d,structuredClone(c.empleados[i]||{})));
-  if(c.feriados&&typeof c.feriados==='object') out.feriados=structuredClone(c.feriados);
-  if(c.plantilla&&typeof c.plantilla==='object') out.plantilla=structuredClone(c.plantilla);
+  const out=clon(DEF_CONFIG);
+  if(Array.isArray(c.empleados)) out.empleados=out.empleados.map((d,i)=>Object.assign({},d,clon(c.empleados[i]||{})));
+  if(c.feriados&&typeof c.feriados==='object') out.feriados=clon(c.feriados);
+  if(c.plantilla&&typeof c.plantilla==='object') out.plantilla=clon(c.plantilla);
   out.empleados.forEach(e=>{if(!ROLES[e.rol])e.rol='camarero';});
   if(c.turnos){ for(const s of ['m','n']) if(c.turnos[s]) Object.assign(out.turnos[s],c.turnos[s]); }
   if(typeof c.pinAdmin==='string') out.pinAdmin=c.pinAdmin;
   out.contarReales=!!c.contarReales;
   out.fotos=c.fotos!==false;
-  if(c.pagos&&typeof c.pagos==='object'){ out.pagos=Object.assign({base:'turno',recargo:0,emp:{}},structuredClone(c.pagos)); if(!out.pagos.emp||typeof out.pagos.emp!=='object') out.pagos.emp={}; }
+  if(c.pagos&&typeof c.pagos==='object'){ out.pagos=Object.assign({base:'turno',recargo:0,emp:{}},clon(c.pagos)); if(!out.pagos.emp||typeof out.pagos.emp!=='object') out.pagos.emp={}; }
   return out;
 }
 
@@ -953,7 +958,7 @@ function renderMes(){
     ${rows.some(x=>x.e.rol==='dueno')?`<div class="card"><div class="k">Dueño</div><div class="v num" style="color:var(--dueno)">${fmt(due)}</div><div class="s">${rows.filter(x=>x.e.rol==='dueno').length} persona${rows.filter(x=>x.e.rol==='dueno').length===1?'':'s'}</div></div>`:''}
     <div class="card"><div class="k">Horas reales fichadas</div><div class="v num" style="color:var(--ok)">${fmt(totReal)}</div><div class="s">${totFich} turnos con entrada y salida</div></div>
     <div class="card fest"><div class="k">En festivos</div><div class="v num">${fmt(totFest)}</div><div class="s">${festMes.length} festivo${festMes.length===1?'':'s'} este mes</div></div>`;
-  const maxSem=Math.max(1,...rows.flatMap(x=>x.sem));
+  const maxSem=Math.max.apply(null,[1].concat(rows.reduce((a,x)=>a.concat(x.sem),[])));
   let h=`<thead><tr><th>Empleado</th><th>Mañanas</th><th>Noches</th><th>Días</th><th>Horas</th><th>Reales fichadas</th><th>En festivo</th><th>Por semana</th></tr></thead><tbody>`;
   for(const x of rows){
     h+=`<tr><td><b>${esc(x.e.nombre)}</b> <span class="rol ${x.e.rol}">${rolLabel(x.e.rol)}</span></td><td class="num">${x.r.m}</td><td class="num">${x.r.n}</td><td class="num">${x.r.dias}</td><td class="h num">${fmt(x.r.min)}</td><td class="rh num">${x.r.fich?`${fmt(x.r.real)} <small>(${x.r.fich} turnos)</small>`:'—'}</td><td class="fh num">${x.r.festMin?fmt(x.r.festMin):'—'}</td><td><div class="wk">${x.sem.map((m,i)=>`<i class="${rolCls(x.e.rol)}" style="height:${Math.max(2,Math.round(26*m/maxSem))}px" title="Semana ${i+1}: ${fmt(m)}"></i>`).join('')}</div></td></tr>`;
