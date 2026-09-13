@@ -39,7 +39,7 @@
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
-button{cursor:pointer}
+button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--camarero);outline-offset:2px}
 h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
 .num{font-variant-numeric:tabular-nums}
@@ -237,6 +237,15 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 @media (prefers-reduced-motion:reduce){.k-alarma{animation:none}}
 .auto-tag{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 5px;border-radius:4px;background:var(--surface-2);color:var(--warn);margin-left:4px;vertical-align:middle}
 
+/* ---------- registro de cambios ---------- */
+.log-item{display:grid;grid-template-columns:100px 90px 1fr;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px;align-items:baseline}
+.log-item .ts{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.log-item .who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-item .what{color:var(--ink-2)}
+.duenorow{display:grid;grid-template-columns:24px 1fr 90px;gap:8px;align-items:center;margin-bottom:8px}
+.duenorow .idx{font-family:var(--display);font-size:18px;color:var(--muted)}
+.sesion{font-size:12px;opacity:.75}
+
 /* ---------- settings ---------- */
 .set{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.set{grid-template-columns:1fr}}
@@ -291,7 +300,8 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .pinshow i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);display:block}
 .pinshow i.f{background:var(--ink);border-color:var(--ink)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.pad button{background:var(--surface-2);border:0;border-radius:12px;font-family:var(--display);font-size:30px;padding:14px 0}
+.pad button{background:var(--surface-2);border:0;border-radius:12px;font-family:var(--display);font-size:30px;padding:14px 0;user-select:none;-webkit-user-select:none}
+.pad button:active{background:var(--line-2);transform:scale(.96)}
 .pad button.txt{font-family:var(--body);font-size:14px;font-weight:600;color:var(--muted)}
 .k-err{color:var(--danger);font-weight:600;min-height:20px;margin-top:8px}
 .cam{position:relative;width:200px;height:150px;margin:14px auto 0;border-radius:14px;overflow:hidden;background:var(--surface-2)}
@@ -476,15 +486,20 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
           <div class="row">Fichar la salida automáticamente <input type="text" class="short" inputmode="numeric" id="alGr"> minutos después del aviso de salida</div>
           <div class="row"><button class="btn" id="alTest" type="button">Probar sonido</button><span style="font-size:13px;color:var(--muted)">Recordá tocar "Guardar cambios" abajo.</span></div>
         </div>
+        <div class="panel" id="panelLog" style="margin-bottom:18px" hidden>
+          <h2>Registro de cambios</h2>
+          <p>Quién hizo qué, con fecha y hora. Los fichajes de los empleados se ven en la solapa Fichajes.</p>
+          <div id="logList"><p style="color:var(--muted)">Cargando…</p></div>
+        </div>
         <div class="panel" id="panelDev" style="margin-bottom:18px" hidden>
           <h2>Dispositivos autorizados</h2>
           <p>Solo estos dispositivos pueden abrir la página y fichar. Para autorizar uno nuevo, abrí la página ahí y poné el PIN del dueño.</p>
           <div id="devList"><p style="color:var(--muted)">Cargando…</p></div>
         </div>
         <div class="panel">
-          <h2>Modo fichaje</h2>
-          <p>PIN del dueño para salir del modo fichaje.</p>
-          <div class="row"><input type="text" inputmode="numeric" class="pin" id="pinAdmin" maxlength="6"></div>
+          <h2>Dueños</h2>
+          <p>Cada dueño entra con su propio PIN y todo lo que hace queda registrado con su nombre. Hasta tres.</p>
+          <div id="duenoList"></div>
           <div class="row"><label><input type="checkbox" id="cFoto"> Sacar una foto con la cámara al fichar (queda guardada con el turno)</label></div>
           <div class="note">El fichaje se usa en la tablet o el celular del local con esta misma página abierta. Cada empleado toca su nombre, pone su PIN y marca entrada o salida. El turno queda registrado en la grilla con un ✓.</div>
         </div>
@@ -568,6 +583,7 @@ const DEF_CONFIG={
   plantilla:{},
   turnos:{m:{nombre:'Mañana',ini:'12:00',fin:'13:50'},n:{nombre:'Noche',ini:'19:30',fin:'23:30'}},
   pinAdmin:'1234',
+  duenos:[{id:'d1',nombre:'Dueño',pin:'1234'},{id:'d2',nombre:'',pin:''},{id:'d3',nombre:'',pin:''}],
   contarReales:false,
   fotos:true,
   pagos:{base:'turno',recargo:0,emp:{}},
@@ -577,14 +593,14 @@ let config=clon(DEF_CONFIG);
 const meses={};            // 'YYYY-MM' -> {turnos:{fecha:{empId:{m:entry,n:entry}}}}
 let db=null, downloads=null, assets=null;
 let mode='local';          // 'db' (artifact de claude.ai) | 'sb' (Supabase) | 'local' (solo este dispositivo)
-let adminPin=null;         // PIN del dueño en modo Supabase (se guarda en la sesión del navegador)
+let adminPin=null, adminNombre='';   // PIN y nombre del dueño que entró (solo en memoria)
 let kioskMeta={};          // longitudes de PIN en modo Supabase
 // Supabase: opcional, pegar acá la URL del proyecto y la clave "anon" para no tener que cargarlas en cada dispositivo
 const SUPABASE_URL='https://xhtsgotuffrqxpzchwjq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhodHNnb3R1ZmZycXhwemNod2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTQxNTcsImV4cCI6MjEwNDg5MDE1N30.SoDSBqxze3sjcbZIO7uPPFRbTZU--3mLUc3jsAPyPYE';
 function sbCfg(){ if(SUPABASE_URL&&SUPABASE_KEY) return {url:SUPABASE_URL,key:SUPABASE_KEY,fija:true}; try{ const j=JSON.parse(localStorage.getItem('terrys-sb')||'null'); return j&&j.url&&j.key?j:null; }catch(e){ return null; } }
 const sbUrl=()=>{ const c=sbCfg(); return c?c.url:''; };
-const SB_FN={autoClose:'auto_close',ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
+const SB_FN={log:'get_log',autoClose:'auto_close',ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
 const devToken=()=>{ try{ return localStorage.getItem('terrys-device')||''; }catch(e){ return ''; } };
 async function sbCall(cfg,action,data){
   const r=await fetch(`${cfg.url.replace(/\/+$/,'')}/rest/v1/rpc/${SB_FN[action]}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key},body:JSON.stringify({p:data||{}})});
@@ -620,7 +636,7 @@ const LS='terrys-horarios-v1';
 function lsLoad(){try{return JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){return {};}}
 function lsSave(all){try{localStorage.setItem(LS,JSON.stringify(all));}catch(e){}}
 
-function normEntry(v){ if(!v||typeof v!=='object'||!v.src) return null; const e={src:v.src}; if(v.in)e.in=v.in; if(v.out)e.out=v.out; if(typeof v.min==='number')e.min=v.min; if(typeof v.fin==='string'&&v.fin)e.fin=v.fin; if(typeof v.fout==='string'&&v.fout)e.fout=v.fout; if(v.auto===true)e.auto=true; return e; }
+function normEntry(v){ if(!v||typeof v!=='object'||!v.src) return null; const e={src:v.src}; if(v.in)e.in=v.in; if(v.out)e.out=v.out; if(typeof v.min==='number')e.min=v.min; if(typeof v.fin==='string'&&v.fin)e.fin=v.fin; if(typeof v.fout==='string'&&v.fout)e.fout=v.fout; if(v.auto===true)e.auto=true; if(typeof v.por==='string'&&v.por)e.por=v.por; return e; }
 const fullEntry=en=>en?{src:en.src,in:en.in||null,out:en.out||null,min:typeof en.min==='number'?en.min:null,fin:en.fin||null,fout:en.fout||null,auto:en.auto===true?true:null}:null;
 function cleanMes(raw){const out={turnos:{},ajustes:{}};const aj=(raw&&raw.ajustes)||{};for(const e in aj){const a=aj[e];if(a&&typeof a==='object')out.ajustes[e]={min:typeof a.min==='number'?a.min:0,extra:typeof a.extra==='number'?a.extra:0,nota:typeof a.nota==='string'?a.nota:''};}const t=(raw&&raw.turnos)||{};for(const f in t){for(const e in t[f]){for(const s of ['m','n']){const v=normEntry(t[f][e]&&t[f][e][s]);if(v){((out.turnos[f]=out.turnos[f]||{})[e]=out.turnos[f][e]||{})[s]=v;}}}}return out;}
 
@@ -696,7 +712,7 @@ const store={
   },
   async saveConfig(){
     if(mode==='db'){ try{ await db.doc('config/main').set(config); }catch(e){ $('sync').textContent='error al guardar'; console.error(e); } }
-    else if(mode==='sb'){ try{ await sb('saveConfig',{pin:adminPin,config}); adminPin=config.pinAdmin; }catch(e){ sbErr(e); } }
+    else if(mode==='sb'){ try{ await sb('saveConfig',{pin:adminPin,config}); const yo=config.duenos.find(d=>d.nombre===adminNombre&&d.pin)||config.duenos.find(d=>d.pin); adminPin=yo.pin; adminNombre=yo.nombre; $('sync').textContent='supabase · '+adminNombre; }catch(e){ sbErr(e); } }
     else lsSave({config,meses});
     renderAll();
   }
@@ -715,7 +731,7 @@ async function sbLoad(){
   for(const r of (d.turnos||[])){ const key=mk(r.fecha); const m=nm[key]=nm[key]||{turnos:{},ajustes:{}}; const en=normEntry(r.entry); if(en) ((m.turnos[r.fecha]=m.turnos[r.fecha]||{})[r.emp]=m.turnos[r.fecha][r.emp]||{})[r.shift]=en; }
   for(const a of (d.ajustes||[])){ const m=nm[a.key]=nm[a.key]||{turnos:{},ajustes:{}}; m.ajustes[a.emp]={min:Number(a.min)||0,extra:Number(a.extra)||0,nota:a.nota||''}; }
   for(const k in meses) delete meses[k]; Object.assign(meses,nm);
-  $('sync').textContent='supabase'; hideLock(); renderAll(); renderDevices();
+  $('sync').textContent='supabase · '+(adminNombre||'dueño'); hideLock(); renderAll(); renderDevices(); renderLog();
   clearInterval(sbPoll); sbPoll=setInterval(()=>{ if(!kiosk&&adminPin&&!$('pop').classList.contains('on')&&!ajustesDirty) sbLoad().catch(()=>{}); },60000);
 }
 async function kioskRefresh(){
@@ -723,7 +739,7 @@ async function kioskRefresh(){
   try{
     const hoy=iso(new Date()); const d=await sb('kiosk',{fecha:hoy,token:devToken()});
     config.empleados=(d.empleados||[]).map(e=>Object.assign({pin:''},e)); config.turnos=d.turnos||config.turnos; config.fotos=d.fotos!==false; config.feriados=d.feriados||{}; if(d.alarmas){ const a=clon(DEF_CONFIG.alarmas); a.on=!!d.alarmas.on; for(const s of ['m','n']) if(d.alarmas[s]) Object.assign(a[s],d.alarmas[s]); if(typeof d.alarmas.gracia==='number') a.gracia=d.alarmas.gracia; config.alarmas=a; }
-    kioskMeta={adminPinLen:d.adminPinLen||4};
+    kioskMeta={adminPinLen:d.adminPinLen||4,adminPinMax:d.adminPinMax||d.adminPinLen||4};
     const key=mk(hoy); const m=meses[key]=meses[key]||{turnos:{},ajustes:{}}; const dia={};
     for(const e in (d.entradas||{})) for(const s of ['m','n']){ const en=normEntry(d.entradas[e][s]); if(en) (dia[e]=dia[e]||{})[s]=en; }
     m.turnos[hoy]=dia; $('sync').textContent='supabase'; renderKiosk();
@@ -750,12 +766,33 @@ function showAuth(msg){
 }
 function showLock(msg){ showAuth(msg); }
 function hideLock(){ $('lock').classList.remove('on'); }
+/* ---- registro de cambios (Ajustes) ---- */
+function logTexto(r){
+  const d=r.detalle||{}; const emp=id=>{const e=config.empleados.find(x=>x.id===id);return e&&e.nombre||id||'';};
+  const fecha=f=>{ if(!f) return ''; const x=fromIso(f); return `${x.getDate()}/${x.getMonth()+1}`; };
+  switch(r.accion){
+    case 'config': { const c=(d.cambios||[]); const nom={empleados:'empleados',feriados:'festivos',plantilla:'horario habitual',turnos:'horarios de turno',pagos:'sueldos',alarmas:'alarmas',duenos:'dueños',pinAdmin:'PIN',fotos:'fotos',contarReales:'horas contadas'}; return 'Guardó ajustes'+(c.length?': '+c.map(k=>nom[k]||k).join(', '):''); }
+    case 'turno': { const en=d.entry; const t=config.turnos[d.turno]?config.turnos[d.turno].nombre.toLowerCase():d.turno; return en?`${en.src==='manual'?'Ajustó horas de':'Marcó'} ${t} del ${fecha(d.fecha)} a ${emp(d.emp)}`:`Quitó ${t} del ${fecha(d.fecha)} a ${emp(d.emp)}`; }
+    case 'turnos_lote': return `Planificó ${d.n} turnos (${fecha(d.desde)} a ${fecha(d.hasta)})`;
+    case 'ajuste_sueldo': return `Ajuste de sueldo de ${emp(d.emp)} en ${d.mes}: ${d.min?fmt(Math.abs(d.min))+(d.min<0?' menos':' más'):''}${d.min&&d.extra?', ':''}${d.extra?fmtEur(d.extra)+' extra':''}`;
+    case 'dispositivo_alta': return `Autorizó el dispositivo "${d.nombre||''}"`;
+    case 'dispositivo_baja': return `Dio de baja el dispositivo "${d.nombre||''}"`;
+    default: return r.accion;
+  }
+}
+async function renderLog(){
+  const pan=$('panelLog'); if(mode!=='sb'||!adminPin){ pan.hidden=true; return; }
+  pan.hidden=false;
+  try{ const list=await sb('log',{pin:adminPin,limit:150});
+    $('logList').innerHTML=list.length?list.map(r=>`<div class="log-item"><span class="ts">${esc(r.ts)}</span><span class="who">${esc(r.dueno)}</span><span class="what">${esc(logTexto(r))}</span></div>`).join(''):'<p style="color:var(--muted)">Todavía no hay cambios registrados.</p>';
+  }catch(e){ $('logList').innerHTML=`<p style="color:var(--danger)">No se pudo cargar: ${esc(e.message)}</p>`; }
+}
 /* ---- dispositivos autorizados (Ajustes) ---- */
 async function renderDevices(){
   const pan=$('panelDev'); if(mode!=='sb'||!adminPin){ pan.hidden=true; return; }
   pan.hidden=false;
   try{ const list=await sb('devices',{pin:adminPin}); const me=devToken();
-    $('devList').innerHTML=list.length?list.map(d=>`<div class="dev-item ${d.token===me?'me':''}"><span><b>${esc(d.nombre||'Sin nombre')}</b><small>autorizado ${d.creado} · último uso ${d.visto}</small></span><button class="x" data-t="${d.token}" title="Dar de baja">✕</button></div>`).join(''):'<p style="color:var(--muted)">No hay dispositivos autorizados.</p>';
+    $('devList').innerHTML=list.length?list.map(d=>`<div class="dev-item ${d.token===me?'me':''}"><span><b>${esc(d.nombre||'Sin nombre')}</b><small>autorizado ${d.creado}${d.por?' por '+esc(d.por):''} · último uso ${d.visto}</small></span><button class="x" data-t="${d.token}" title="Dar de baja">✕</button></div>`).join(''):'<p style="color:var(--muted)">No hay dispositivos autorizados.</p>';
   }catch(e){ $('devList').innerHTML=`<p style="color:var(--danger)">No se pudo cargar: ${esc(e.message)}</p>`; }
 }
 $('devList').addEventListener('click',async e=>{
@@ -791,6 +828,9 @@ function mergeConfig(c){
   out.empleados.forEach(e=>{if(!ROLES[e.rol])e.rol='camarero';});
   if(c.turnos){ for(const s of ['m','n']) if(c.turnos[s]) Object.assign(out.turnos[s],c.turnos[s]); }
   if(typeof c.pinAdmin==='string') out.pinAdmin=c.pinAdmin;
+  if(Array.isArray(c.duenos)&&c.duenos.some(d=>d&&d.pin)) out.duenos=out.duenos.map((d,i)=>Object.assign({},d,clon(c.duenos[i]||{nombre:'',pin:''})));
+  else out.duenos[0].pin=out.pinAdmin||'1234';
+  out.pinAdmin=(out.duenos.find(d=>d.pin)||{pin:'1234'}).pin;
   out.contarReales=!!c.contarReales;
   out.fotos=c.fotos!==false;
   if(c.alarmas&&typeof c.alarmas==='object'){ out.alarmas.on=!!c.alarmas.on; for(const s of ['m','n']) if(c.alarmas[s]) Object.assign(out.alarmas[s],c.alarmas[s]); if(typeof c.alarmas.gracia==='number') out.alarmas.gracia=c.alarmas.gracia; }
@@ -845,7 +885,7 @@ let vista='semana';
 function renderAll(){ renderSemana(); renderPlan(); renderMes(); renderSueldos(); renderFichajes(); renderAjustesIfIdle(); renderKiosk(); }
 
 /* ---- tabs ---- */
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes'){renderAjustes(true);renderDevices();}});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes'){renderAjustes(true);renderDevices();renderLog();}});
 
 /* ======================= SEMANA ======================= */
 $('wPrev').onclick=()=>{semana=addDays(semana,-7);renderSemana();};
@@ -916,6 +956,7 @@ function openPop(p){
   if(en&&en.src==='fichaje') fi=`<div class="fichinfo">Fichó entrada ${en.in}${en.out?` y salida ${en.out}${en.auto?' (automática)':''} · ${fmt(realMin(en))} reales`:' · todavía no fichó salida'}</div>`;
   else if(en&&en.src==='manual') fi=`<div class="fichinfo" style="background:var(--surface-2);color:var(--ink-2)">Horas ajustadas a mano</div>`;
   if(en&&(en.fin||en.fout)) fi+=`<div class="fotos">${en.fin?`<figure><img src="${fotoUrl(en.fin)}" alt="Foto entrada" data-id="${en.fin}" referrerpolicy="no-referrer">Entrada ${en.in||''}</figure>`:''}${en.fout?`<figure><img src="${fotoUrl(en.fout)}" alt="Foto salida" data-id="${en.fout}" referrerpolicy="no-referrer">Salida ${en.out||''}</figure>`:''}</div>`;
+  if(en&&en.por) fi+=`<div class="meta" style="margin-top:6px">Cargado por ${esc(en.por)}</div>`;
   $('popFich').innerHTML=fi; cargarFotos($('popFich'));
   $('popHoras').value=en?fmtShort(minutosDe(en,s)):fmtShort(nominal(s));
   $('popDel').style.display=en?'':'none';
@@ -1144,7 +1185,8 @@ function renderAjustes(force){
   $('empList').innerHTML=config.empleados.map((e,i)=>`<div class="emprow ${e.nombre?'':'off'}" data-i="${i}"><span class="idx">${i+1}</span><input type="text" placeholder="Lugar libre" value="${esc(e.nombre)}" data-k="nombre"><select data-k="rol">${Object.keys(ROLES).map(k=>`<option value="${k}" ${e.rol===k?'selected':''}>${ROLES[k].label}</option>`).join('')}</select><input type="text" class="pin" inputmode="numeric" maxlength="6" placeholder="PIN" value="${esc(e.pin)}" data-k="pin"><label class="tog"><input type="checkbox" ${e.activo?'checked':''} data-k="activo">activo</label></div>`).join('');
   renderFestList();
   $('tMi').value=config.turnos.m.ini;$('tMf').value=config.turnos.m.fin;$('tNi').value=config.turnos.n.ini;$('tNf').value=config.turnos.n.fin;
-  $('cReal').checked=config.contarReales; $('cFoto').checked=config.fotos; $('pinAdmin').value=config.pinAdmin; updDur();
+  $('cReal').checked=config.contarReales; $('cFoto').checked=config.fotos; updDur();
+  $('duenoList').innerHTML=config.duenos.map((d,i)=>`<div class="duenorow" data-i="${i}"><span class="idx">${i+1}</span><input type="text" placeholder="${i?'Lugar libre':'Nombre'}" value="${esc(d.nombre)}" data-k="nombre"><input type="text" class="pin" inputmode="numeric" maxlength="8" placeholder="PIN" value="${esc(d.pin)}" data-k="pin"></div>`).join('');
   const al=config.alarmas; $('alOn').checked=al.on; $('alMe').value=al.m.ent; $('alMs').value=al.m.sal; $('alNe').value=al.n.ent; $('alNs').value=al.n.sal; $('alGr').value=al.gracia;
 }
 function renderFestList(){
@@ -1160,7 +1202,11 @@ $('alTest').onclick=()=>{ audioUnlock(); sonarAlarma(); };
 $('btnSave').onclick=async()=>{
   document.querySelectorAll('#empList .emprow').forEach(row=>{const e=config.empleados[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{e[inp.dataset.k]=inp.type==='checkbox'?inp.checked:inp.value.trim();});});
   config.turnos.m.ini=$('tMi').value||'12:00';config.turnos.m.fin=$('tMf').value||'13:50';config.turnos.n.ini=$('tNi').value||'19:30';config.turnos.n.fin=$('tNf').value||'23:30';
-  config.contarReales=$('cReal').checked; config.fotos=$('cFoto').checked; config.pinAdmin=$('pinAdmin').value.trim()||'1234';
+  document.querySelectorAll('#duenoList .duenorow').forEach(row=>{const d=config.duenos[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{d[inp.dataset.k]=inp.value.trim();});});
+  if(!config.duenos.some(d=>d.pin)){ alert('Tiene que haber al menos un dueño con PIN.'); config.duenos[0].pin='1234'; }
+  config.duenos.forEach(d=>{ if(d.pin&&!d.nombre) d.nombre='Dueño'; });
+  config.pinAdmin=config.duenos.find(d=>d.pin).pin;
+  config.contarReales=$('cReal').checked; config.fotos=$('cFoto').checked;
   config.alarmas={on:$('alOn').checked,m:{ent:$('alMe').value||config.turnos.m.ini,sal:$('alMs').value||config.turnos.m.fin},n:{ent:$('alNe').value||config.turnos.n.ini,sal:$('alNs').value||config.turnos.n.fin},gracia:Math.max(0,Math.min(180,Math.round(numOf($('alGr').value))))};
   await store.saveConfig(); ajustesDirty=false; renderAjustes(true); $('saveMsg').textContent='Guardado ✓'; setTimeout(()=>$('saveMsg').textContent='',2500);
 };
@@ -1174,7 +1220,7 @@ function turnoActual(){ // qué turno corresponde según la hora
 }
 function setKiosk(on){
   kiosk=on; $('kiosk').classList.toggle('on',on); document.body.style.overflow=on?'hidden':''; if(!on){ stopCam(); ocultarAlarma(); }
-  clearInterval(kioskPoll); if(on&&mode==='sb'){ adminPin=null; clearInterval(sbPoll); $('panelDev').hidden=true; kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
+  clearInterval(kioskPoll); if(on&&mode==='sb'){ adminPin=null; adminNombre=''; clearInterval(sbPoll); $('panelDev').hidden=true; $('panelLog').hidden=true; kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
   try{ if(on) localStorage.setItem('terrys-kiosk','1'); else localStorage.removeItem('terrys-kiosk'); }catch(e){}
   if(on){ kSel=null; kStep=null; $('kModal').classList.remove('on'); renderKiosk(); }
 }
@@ -1236,25 +1282,42 @@ function renderKModal(){
     box.innerHTML=`<h2>Listo, ${esc(kSel.nombre)}</h2><div class="k-done" id="kOkMsg"></div><div class="sub" id="kOkFoto"></div>`;
   }
 }
-function kNeed(){ if(mode==='sb') return kStep==='admin'?(kioskMeta.adminPinLen||4):(kSel&&kSel.pinLen||4); const ex=kStep==='admin'?config.pinAdmin:(kSel&&kSel.pin||''); return ex.length; }
+const duenosOk=pin=>config.duenos.find(d=>d.pin&&d.pin===pin)||null;
+const duenoLens=()=>{const ls=config.duenos.filter(d=>d.pin).map(d=>d.pin.length);return ls.length?{min:Math.min.apply(null,ls),max:Math.max.apply(null,ls)}:{min:4,max:4};};
+function kNeed(){ if(mode==='sb') return kStep==='admin'?(kioskMeta.adminPinLen||4):(kSel&&kSel.pinLen||4); if(kStep==='admin') return duenoLens().min; return (kSel&&kSel.pin||'').length; }
+function kMax(){ if(mode==='sb') return kStep==='admin'?(kioskMeta.adminPinMax||kioskMeta.adminPinLen||4):(kSel&&kSel.pinLen||4); if(kStep==='admin') return duenoLens().max; return (kSel&&kSel.pin||'').length; }
 let kVerificando=false;
-$('kBox').addEventListener('click',async e=>{
-  const b=e.target.closest('[data-n]'); if(!b||kVerificando)return; const n=b.dataset.n;
+async function padInput(n,forzar){
+  if(kVerificando) return;
   if(n==='x'){closeKModal();return;}
   if(n==='del'){kPin=kPin.slice(0,-1);renderKModal();return;}
-  kPin+=n; renderKModal();
-  if(kPin.length<kNeed()) return;
+  if(n!=='ok'){ if(kPin.length>=kMax()) return; kPin+=n; renderKModal(); }
+  if(!kPin.length) return;
+  if(kPin.length<kNeed()&&!forzar) return;
+  const ultimo=kPin.length>=kMax()||forzar;   // si hay PINs de distinto largo, un PIN corto incorrecto espera más dígitos
   if(mode==='sb'){
     kVerificando=true; $('kErr').textContent='Verificando…';
-    let ok=false; try{ const d=await sb(kStep==='admin'?'pinAdmin':'pin',{pin:kPin,emp:kSel?kSel.id:'',token:devToken()}); ok=!!d.ok; }catch(err){ kVerificando=false; kPin=''; if(err.code==='device'){ sbErr(err); return; } $('kErr').textContent='Sin conexión: '+err.message; return; }
+    let d=null; try{ d=await sb(kStep==='admin'?'pinAdmin':'pin',{pin:kPin,emp:kSel?kSel.id:'',token:devToken()}); }catch(err){ kVerificando=false; kPin=''; if(err.code==='device'){ sbErr(err); return; } $('kErr').textContent='Sin conexión: '+err.message; return; }
     kVerificando=false;
-    if(ok){ if(kStep==='admin'){ const pin=kPin; closeKModal(); setKiosk(false); adminPin=pin; sbLoad().catch(err=>{ alert('No se pudo cargar: '+err.message); setKiosk(true); }); } else { kPinVerified=kPin; kStep='accion'; renderKModal(); } }
-    else { kPin=''; renderKModal(); $('kErr').textContent='PIN incorrecto'; }
+    if(d.ok){ if(kStep==='admin'){ const pin=kPin, nom=d.nombre||'Dueño'; closeKModal(); setKiosk(false); adminPin=pin; adminNombre=nom; sbLoad().catch(err=>{ alert('No se pudo cargar: '+err.message); setKiosk(true); }); } else { kPinVerified=kPin; kStep='accion'; renderKModal(); } }
+    else if(ultimo){ kPin=''; renderKModal(); $('kErr').textContent='PIN incorrecto'; }
+    else $('kErr').textContent='';
     return;
   }
-  const expected=kStep==='admin'?config.pinAdmin:kSel.pin;
-  if(kPin===expected){ if(kStep==='admin'){closeKModal();setKiosk(false);} else {kStep='accion';renderKModal();} }
-  else { kPin=''; setTimeout(()=>{renderKModal();$('kErr').textContent='PIN incorrecto';},80); }
+  if(kStep==='admin'){ const d=duenosOk(kPin); if(d){ adminNombre=d.nombre||'Dueño'; closeKModal(); setKiosk(false); renderAll(); } else if(ultimo){ kPin=''; renderKModal(); $('kErr').textContent='PIN incorrecto'; } return; }
+  if(kPin===kSel.pin){ kStep='accion'; renderKModal(); }
+  else if(ultimo){ kPin=''; setTimeout(()=>{renderKModal();$('kErr').textContent='PIN incorrecto';},80); }
+}
+// Toque inmediato: se reacciona al apoyar el dedo, sin esperar al "click" (que en iOS tiene demora)
+const PAD_EV=window.PointerEvent?'pointerdown':'click';
+$('kBox').addEventListener(PAD_EV,e=>{ const b=e.target.closest('[data-n]'); if(!b) return; if(e.type==='pointerdown'){ if(e.pointerType==='mouse'&&e.button!==0) return; e.preventDefault(); } padInput(b.dataset.n); });
+// Teclado físico (Bluetooth o computadora)
+document.addEventListener('keydown',e=>{
+  if(!$('kModal').classList.contains('on')||(kStep!=='pin'&&kStep!=='admin')) return;
+  if(/^[0-9]$/.test(e.key)){ e.preventDefault(); padInput(e.key); }
+  else if(e.key==='Backspace'){ e.preventDefault(); padInput('del'); }
+  else if(e.key==='Escape'){ e.preventDefault(); padInput('x'); }
+  else if(e.key==='Enter'){ e.preventDefault(); padInput('ok',true); }
 });
 let fichando=false;
 async function fichar(tipo){

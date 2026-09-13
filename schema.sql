@@ -45,6 +45,16 @@ create table if not exists dispositivos (
   last_seen timestamptz not null default now()
 );
 
+-- Registro de cambios: qué dueño hizo qué y cuándo.
+create table if not exists registro (
+  id bigserial primary key,
+  ts timestamptz not null default now(),
+  dueno text not null default '',
+  accion text not null,
+  detalle jsonb
+);
+alter table dispositivos add column if not exists autorizado_por text not null default '';
+
 -- Nadie accede a las tablas directamente: todo pasa por las funciones de abajo,
 -- que verifican los PIN. (RLS activo sin políticas = acceso denegado.)
 alter table app_config enable row level security;
@@ -52,7 +62,8 @@ alter table turnos enable row level security;
 alter table ajustes_mes enable row level security;
 alter table fotos enable row level security;
 alter table dispositivos enable row level security;
-revoke all on app_config, turnos, ajustes_mes, fotos, dispositivos from anon, authenticated;
+alter table registro enable row level security;
+revoke all on app_config, turnos, ajustes_mes, fotos, dispositivos, registro from anon, authenticated;
 
 -- ---------- helpers internos ----------
 create or replace function _cfg() returns jsonb
@@ -60,14 +71,47 @@ language sql security definer set search_path = public as $$
   select coalesce((select data from app_config where id = 1), '{}'::jsonb)
 $$;
 
-create or replace function _admin_pin() returns text
-language sql security definer set search_path = public as $$
-  select coalesce(nullif(_cfg()->>'pinAdmin',''), '1234')
-$$;
+drop function if exists _admin_pin();
+
+-- Devuelve el dueño ({id,nombre,pin}) cuyo PIN coincide, o null.
+create or replace function _admin_of(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare c jsonb := _cfg(); d jsonb; pin text := coalesce(p->>'pin','');
+begin
+  if pin = '' then return null; end if;
+  if jsonb_typeof(c->'duenos') = 'array' and jsonb_array_length(c->'duenos') > 0 then
+    select x into d from jsonb_array_elements(c->'duenos') x where coalesce(x->>'pin','') <> '' and x->>'pin' = pin limit 1;
+    return d;
+  end if;
+  if pin = coalesce(nullif(c->>'pinAdmin',''), '1234') then return jsonb_build_object('id','d1','nombre','Dueño'); end if;
+  return null;
+end $$;
 
 create or replace function _is_admin(p jsonb) returns boolean
 language sql security definer set search_path = public as $$
-  select coalesce(p->>'pin','') = _admin_pin()
+  select _admin_of(p) is not null
+$$;
+
+create or replace function _admin_name(p jsonb) returns text
+language sql security definer set search_path = public as $$
+  select coalesce(nullif(_admin_of(p)->>'nombre',''), 'Dueño')
+$$;
+
+-- Largo mínimo y máximo de los PIN de dueño (para el teclado de la pantalla de fichaje).
+create or replace function _admin_pin_lens() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare c jsonb := _cfg(); mn int; mx int;
+begin
+  if jsonb_typeof(c->'duenos') = 'array' then
+    select min(length(x->>'pin')), max(length(x->>'pin')) into mn, mx from jsonb_array_elements(c->'duenos') x where coalesce(x->>'pin','') <> '';
+  end if;
+  if mn is null then mn := length(coalesce(nullif(c->>'pinAdmin',''), '1234')); mx := mn; end if;
+  return jsonb_build_object('min', mn, 'max', mx);
+end $$;
+
+create or replace function _log(p jsonb, accion text, detalle jsonb) returns void
+language sql security definer set search_path = public as $$
+  insert into registro (dueno, accion, detalle) values (_admin_name(p), accion, detalle)
 $$;
 
 create or replace function _emp_pin(p_emp text) returns text
@@ -97,7 +141,7 @@ language sql as $$ select jsonb_build_object('ok', true, 'data', 'pong') $$;
 
 create or replace function check_admin(p jsonb) returns jsonb
 language sql security definer set search_path = public as $$
-  select jsonb_build_object('ok', true, 'data', jsonb_build_object('ok', _is_admin(p), 'len', length(_admin_pin())))
+  select jsonb_build_object('ok', true, 'data', jsonb_build_object('ok', _is_admin(p), 'len', _admin_pin_lens()->'min', 'max', _admin_pin_lens()->'max', 'nombre', case when _is_admin(p) then _admin_name(p) else null end))
 $$;
 
 create or replace function check_pin(p jsonb) returns jsonb
@@ -114,7 +158,8 @@ language plpgsql security definer set search_path = public as $$
 declare t uuid;
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
-  insert into dispositivos (nombre) values (left(coalesce(p->>'nombre',''), 60)) returning token into t;
+  insert into dispositivos (nombre, autorizado_por) values (left(coalesce(p->>'nombre',''), 60), _admin_name(p)) returning token into t;
+  perform _log(p, 'dispositivo_alta', jsonb_build_object('nombre', left(coalesce(p->>'nombre',''), 60)));
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('token', t::text));
 end $$;
 
@@ -123,13 +168,14 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
   return jsonb_build_object('ok', true, 'data', (select coalesce(jsonb_agg(jsonb_build_object(
-    'token', token::text, 'nombre', nombre, 'creado', to_char(created_at at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI'), 'visto', to_char(last_seen at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI')) order by created_at), '[]'::jsonb) from dispositivos));
+    'token', token::text, 'nombre', nombre, 'por', autorizado_por, 'creado', to_char(created_at at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI'), 'visto', to_char(last_seen at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI')) order by created_at), '[]'::jsonb) from dispositivos));
 end $$;
 
 create or replace function revoke_device(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  perform _log(p, 'dispositivo_baja', jsonb_build_object('nombre', (select nombre from dispositivos where token = (p->>'token')::uuid)));
   delete from dispositivos where token = (p->>'token')::uuid;
   return jsonb_build_object('ok', true, 'data', true);
 end $$;
@@ -149,7 +195,7 @@ begin
     'fotos', coalesce((c->>'fotos')::boolean, true),
     'feriados', coalesce(c->'feriados','{}'::jsonb),
     'alarmas', c->'alarmas',
-    'adminPinLen', length(_admin_pin()),
+    'adminPinLen', _admin_pin_lens()->'min', 'adminPinMax', _admin_pin_lens()->'max',
     'fecha', to_char(f,'YYYY-MM-DD'),
     'entradas', (select coalesce(jsonb_object_agg(emp, ent), '{}'::jsonb)
                  from (select emp, jsonb_object_agg(shift, entry) ent from turnos where fecha = f group by emp) x)
@@ -174,6 +220,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
   if jsonb_typeof(p->'config') <> 'object' then return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Config inválida'); end if;
+  perform _log(p, 'config', jsonb_build_object('cambios', (select coalesce(jsonb_agg(k), '[]'::jsonb) from (select key k from jsonb_each(p->'config') union select key from jsonb_each(_cfg())) x where (p->'config')->k is distinct from _cfg()->k)));
   insert into app_config (id, data) values (1, p->'config')
     on conflict (id) do update set data = excluded.data, updated_at = now();
   return jsonb_build_object('ok', true, 'data', true);
@@ -194,7 +241,8 @@ create or replace function set_turno(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
-  perform _upsert_turno((p->>'fecha')::date, p->>'emp', p->>'shift', p->'entry');
+  perform _upsert_turno((p->>'fecha')::date, p->>'emp', p->>'shift', case when _clean_entry(p->'entry') is null then null else _clean_entry(p->'entry') || jsonb_build_object('por', _admin_name(p)) end);
+  perform _log(p, 'turno', jsonb_build_object('fecha', p->>'fecha', 'emp', p->>'emp', 'turno', p->>'shift', 'entry', _clean_entry(p->'entry')));
   return jsonb_build_object('ok', true, 'data', true);
 end $$;
 
@@ -207,10 +255,11 @@ begin
   for d in select * from jsonb_each(coalesce(p->'changes','{}'::jsonb)) loop
     for e in select * from jsonb_each(d.value) loop
       for s in select * from jsonb_each(e.value) loop
-        perform _upsert_turno(d.key::date, e.key, s.key, s.value); n := n + 1;
+        perform _upsert_turno(d.key::date, e.key, s.key, case when _clean_entry(s.value) is null then null else _clean_entry(s.value) || jsonb_build_object('por', _admin_name(p)) end); n := n + 1;
       end loop;
     end loop;
   end loop;
+  perform _log(p, 'turnos_lote', jsonb_build_object('n', n, 'desde', (select min(key) from jsonb_each(coalesce(p->'changes','{}'::jsonb))), 'hasta', (select max(key) from jsonb_each(coalesce(p->'changes','{}'::jsonb)))));
   return jsonb_build_object('ok', true, 'data', n);
 end $$;
 
@@ -221,6 +270,7 @@ begin
   insert into ajustes_mes (mes, emp, min, extra, nota)
     values (p->>'key', p->>'emp', coalesce((p->'data'->>'min')::int, 0), coalesce((p->'data'->>'extra')::numeric, 0), coalesce(p->'data'->>'nota',''))
     on conflict (mes, emp) do update set min = excluded.min, extra = excluded.extra, nota = excluded.nota;
+  perform _log(p, 'ajuste_sueldo', jsonb_build_object('mes', p->>'key', 'emp', p->>'emp', 'min', p->'data'->'min', 'extra', p->'data'->'extra'));
   return jsonb_build_object('ok', true, 'data', true);
 end $$;
 
@@ -281,6 +331,16 @@ begin
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('cerrados', n));
 end $$;
 
+-- Registro de cambios (últimos N). Requiere PIN del dueño.
+create or replace function get_log(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare lim int := least(greatest(coalesce((p->>'limit')::int, 100), 1), 500);
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  return jsonb_build_object('ok', true, 'data', (select coalesce(jsonb_agg(jsonb_build_object('ts', to_char(ts at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI'), 'dueno', dueno, 'accion', accion, 'detalle', detalle) order by id desc), '[]'::jsonb)
+    from (select * from registro order by id desc limit lim) r));
+end $$;
+
 -- Importar una foto existente (migración). Requiere PIN del dueño.
 create or replace function import_foto(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -292,10 +352,10 @@ begin
 end $$;
 
 -- ---------- permisos ----------
-revoke execute on function _cfg(), _admin_pin(), _is_admin(jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
+revoke execute on function _cfg(), _admin_of(jsonb), _is_admin(jsonb), _admin_name(jsonb), _admin_pin_lens(), _log(jsonb,text,jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
 grant execute on function ping(jsonb), check_admin(jsonb), check_pin(jsonb), kiosk_data(jsonb), load_all(jsonb), save_config(jsonb),
   set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb), import_foto(jsonb), auto_close(jsonb),
-  authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb) to anon, authenticated;
+  authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb), get_log(jsonb) to anon, authenticated;
 
 -- Para que PostgREST vea las funciones nuevas enseguida
 notify pgrst, 'reload schema';
