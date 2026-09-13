@@ -208,6 +208,23 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .sfoot .msg{color:var(--ok);font-weight:600;font-size:14px}
 .tbl td.emp-cell{white-space:nowrap}
 
+/* ---------- fichajes ---------- */
+.ffil{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.ffil select{padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface)}
+.tbl tr.dia td{background:var(--surface-2);font-weight:700;text-align:left;padding:8px 12px;font-size:13px;letter-spacing:.04em}
+.tbl tr.dia td .fb{margin-left:8px}
+.tbl tr.dia.festivo td{background:var(--festivo-soft);color:var(--festivo-ink)}
+.tbl td.tl{text-align:left}
+.tpill{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--surface-2);color:var(--ink-2)}
+.tpill.m{background:#fbe7c4;color:#7a4a00}.tpill.n{background:#dcd8ee;color:#33306b}
+:root:not([data-theme="light"]) .tpill.m{background:#3d2c0c;color:#f5c778}:root:not([data-theme="light"]) .tpill.n{background:#26243d;color:#c9c3f2}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .tpill.m{background:#fbe7c4;color:#7a4a00} :root:not([data-theme="dark"]) .tpill.n{background:#dcd8ee;color:#33306b} }
+.th{width:64px;height:48px;object-fit:cover;border-radius:7px;background:var(--surface-2);display:inline-block;cursor:zoom-in;transform:scaleX(-1);vertical-align:middle}
+.th.none{cursor:default;opacity:.35;background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 6px,var(--line) 6px,var(--line) 8px)}
+.tbl td.abierto{color:var(--warn);font-weight:700}
+.tbl td.hreal{font-family:var(--display);font-size:22px;line-height:1}
+.tbl td.dim2{color:var(--muted);font-size:12px}
+
 /* ---------- settings ---------- */
 .set{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.set{grid-template-columns:1fr}}
@@ -320,6 +337,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
     <button class="tab" data-v="plan">Planificar</button>
     <button class="tab" data-v="mes">Mes</button>
     <button class="tab" data-v="sueldos">Sueldos</button>
+    <button class="tab" data-v="fichajes">Fichajes</button>
     <button class="tab" data-v="ajustes">Ajustes</button>
   </nav>
   <span class="sync" id="sync">guardado local</span>
@@ -392,6 +410,20 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
     <div class="tblwrap"><table class="tbl" id="sTbl"></table></div>
     <div class="sfoot"><span class="msg" id="sMsg"></span></div>
     <p class="hint">Por hora: se paga la tarifa por cada hora del mes. Sueldo mensual: se paga el sueldo fijo y se muestra a cuánto sale la hora según lo trabajado. "Ajuste de horas" suma o resta horas (por ejemplo, -2 o 3,5). "Extra €" suma o resta un importe fijo (un adelanto en negativo, un plus en positivo). Todo se guarda solo.</p>
+  </section>
+
+  <!-- ================= FICHAJES ================= -->
+  <section class="view" id="v-fichajes">
+    <div class="toolbar">
+      <h1 class="period">Fichajes<small id="fSub"></small></h1>
+      <div class="ffil">
+        <select id="fPer"><option value="hoy">Hoy</option><option value="7" selected>Últimos 7 días</option><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="30">Últimos 30 días</option></select>
+        <select id="fEmp"><option value="">Todos</option></select>
+      </div>
+    </div>
+    <div class="cards" id="fCards"></div>
+    <div class="tblwrap"><table class="tbl" id="fTbl"></table></div>
+    <p class="hint">Se muestran los turnos fichados desde la pantalla de fichaje. Tocá una foto para verla grande. "En curso" significa que fichó la entrada pero todavía no la salida.</p>
   </section>
 
   <!-- ================= AJUSTES ================= -->
@@ -543,9 +575,20 @@ const sb=(action,data)=>sbCall(sbCfg(),action,data);
 function sbErr(e){ console.error(e); if(e&&e.code==='pin'){ adminPin=null; alert('El PIN del dueño cambió. Volvé a ingresarlo.'); setKiosk(true); } else if(e&&e.code==='device'){ try{localStorage.removeItem('terrys-device');}catch(x){} showAuth('Este dispositivo fue dado de baja.'); } else $('sync').textContent='error al guardar'; }
 const fotoUrl=id=>mode==='sb'?'':'/_blob/'+id;   // en modo Supabase la foto se pide aparte (cargarFotos)
 function fotoOpen(id,src){ const ov=$('fotoBig'); ov.querySelector('img').src=src||fotoUrl(id); ov.classList.add('on'); }
-async function cargarFotos(root){
-  if(mode!=='sb') return;
-  for(const im of root.querySelectorAll('img[data-id]')){ try{ const d=await sb('foto',{pin:adminPin,id:im.dataset.id}); if(d&&d.b64) im.src='data:image/jpeg;base64,'+d.b64; }catch(e){ im.alt='Sin foto'; } }
+const fotoCache={};
+async function cargarFoto(im){
+  const id=im.dataset.id; if(!id||im.dataset.ok) return;
+  if(fotoCache[id]){ im.src=fotoCache[id]; im.dataset.ok='1'; return; }
+  if(mode!=='sb'){ im.src=fotoUrl(id); im.dataset.ok='1'; return; }
+  try{ const d=await sb('foto',{pin:adminPin,id}); if(d&&d.b64){ fotoCache[id]='data:image/jpeg;base64,'+d.b64; im.src=fotoCache[id]; im.dataset.ok='1'; } }catch(e){ im.alt='Sin foto'; }
+}
+let fotoObs=null;
+function cargarFotos(root){
+  const ims=[...root.querySelectorAll('img[data-id]')];
+  if(window.IntersectionObserver){
+    if(!fotoObs) fotoObs=new IntersectionObserver(es=>{ es.forEach(e=>{ if(e.isIntersecting){ fotoObs.unobserve(e.target); cargarFoto(e.target); } }); },{rootMargin:'200px'});
+    ims.forEach(im=>fotoObs.observe(im));
+  } else ims.forEach(cargarFoto);
 }
 const subs={};
 
@@ -775,7 +818,7 @@ function calcPago(e,dias,key){
 let semana=monday(new Date());
 let mesVista=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let vista='semana';
-function renderAll(){ renderSemana(); renderPlan(); renderMes(); renderSueldos(); renderAjustesIfIdle(); renderKiosk(); }
+function renderAll(){ renderSemana(); renderPlan(); renderMes(); renderSueldos(); renderFichajes(); renderAjustesIfIdle(); renderKiosk(); }
 
 /* ---- tabs ---- */
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes'){renderAjustes(true);renderDevices();}});
@@ -861,6 +904,7 @@ function openPop(p){
 function closePop(){$('pop').classList.remove('on');popCtx=null;}
 $('popClose').onclick=closePop;
 $('popFich').addEventListener('click',e=>{const im=e.target.closest('img[data-id]');if(im&&im.src)fotoOpen(im.dataset.id,im.src);});
+$('fTbl').addEventListener('click',e=>{const im=e.target.closest('img[data-id]');if(im&&im.src)fotoOpen(im.dataset.id,im.src);});
 $('fotoBig').addEventListener('click',()=>$('fotoBig').classList.remove('on'));
 $('popDel').onclick=()=>{if(popCtx)store.setTurno(popCtx.f,popCtx.emp,popCtx.s,null);closePop();};
 $('popOk').onclick=()=>{
@@ -1028,6 +1072,45 @@ $('btnCsvS').onclick=async()=>{
   const csv=lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
   try{await downloads.save({filename:`sueldos-${key}.csv`,data:'\ufeff'+csv});}catch(e){}
 };
+
+/* ======================= FICHAJES ======================= */
+$('fPer').addEventListener('change',renderFichajes); $('fEmp').addEventListener('change',renderFichajes);
+function rangoFichajes(){
+  const hoy=new Date(); hoy.setHours(0,0,0,0); const v=$('fPer').value;
+  if(v==='hoy') return [iso(hoy),iso(hoy)];
+  if(v==='mes') return [iso(new Date(hoy.getFullYear(),hoy.getMonth(),1)),iso(new Date(hoy.getFullYear(),hoy.getMonth()+1,0))];
+  if(v==='mesant') return [iso(new Date(hoy.getFullYear(),hoy.getMonth()-1,1)),iso(new Date(hoy.getFullYear(),hoy.getMonth(),0))];
+  return [iso(addDays(hoy,-(Number(v)-1))),iso(hoy)];
+}
+function renderFichajes(){
+  const sel=$('fEmp'); const emps=empActivos(); const cur=sel.value;
+  sel.innerHTML='<option value="">Todos</option>'+emps.map(e=>`<option value="${e.id}" ${e.id===cur?'selected':''}>${esc(e.nombre)}</option>`).join('');
+  const [d0,d1]=rangoFichajes(); const fe=sel.value;
+  // meses a mirar
+  const ks=[]; for(let d=fromIso(d0);iso(d)<=d1;d=new Date(d.getFullYear(),d.getMonth()+1,1)) ks.push(mk(iso(d))); ks.forEach(k=>store.watchMes(k));
+  const rows=[];
+  for(const k of ks){ const m=meses[k]; if(!m) continue; for(const f in m.turnos){ if(f<d0||f>d1) continue; for(const e in m.turnos[f]){ if(fe&&e!==fe) continue; for(const sh of ['m','n']){ const en=m.turnos[f][e][sh]; if(en&&en.in) rows.push({f,e,sh,en}); } } } }
+  rows.sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(a.sh<b.sh?-1:a.sh>b.sh?1:0)||(a.en.in<b.en.in?-1:1));
+  const a=fromIso(d0),b=fromIso(d1);
+  $('fSub').textContent=d0===d1?`${a.getDate()} de ${MESES[a.getMonth()]}`:`${a.getDate()} ${MESES[a.getMonth()].slice(0,3)} – ${b.getDate()} ${MESES[b.getMonth()].slice(0,3)}`;
+  const cerr=rows.filter(r=>r.en.out), abiertos=rows.length-cerr.length, real=cerr.reduce((x,r)=>x+realMin(r.en),0), sinFoto=rows.filter(r=>!r.en.fin&&!r.en.fout).length;
+  $('fCards').innerHTML=`
+    <div class="card"><div class="k">Fichajes</div><div class="v num">${rows.length}</div><div class="s">${cerr.length} completos</div></div>
+    <div class="card"><div class="k">Horas reales</div><div class="v num" style="color:var(--ok)">${fmt(real)}</div><div class="s">entrada a salida</div></div>
+    <div class="card"><div class="k">En curso</div><div class="v num" style="color:${abiertos?'var(--warn)':'inherit'}">${abiertos}</div><div class="s">sin salida fichada</div></div>
+    <div class="card"><div class="k">Sin foto</div><div class="v num">${sinFoto}</div><div class="s">fichajes sin ninguna foto</div></div>`;
+  const th=(id,alt)=>id?`<img class="th" data-id="${id}" alt="${alt}" loading="lazy">`:`<span class="th none" title="Sin foto"></span>`;
+  let h=`<thead><tr><th style="text-align:left">Turno</th><th style="text-align:left">Persona</th><th>Entrada</th><th>Salida</th><th>Horas reales</th><th>Foto entrada</th><th>Foto salida</th></tr></thead><tbody>`;
+  let dia='';
+  for(const r of rows){
+    if(r.f!==dia){ dia=r.f; const d=fromIso(dia); h+=`<tr class="dia ${esFestivo(dia)?'festivo':''}"><td colspan="7">${DOW[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}${esFestivo(dia)?'<span class="fbadge fb">Festivo</span>':''}</td></tr>`; }
+    const e=config.empleados.find(x=>x.id===r.e)||{nombre:r.e,rol:'camarero'};
+    h+=`<tr><td class="tl"><span class="tpill ${r.sh}">${config.turnos[r.sh].nombre}</span></td><td class="tl"><b>${esc(e.nombre)}</b> <span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td><td class="num">${r.en.in}</td><td class="num ${r.en.out?'':'abierto'}">${r.en.out||'en curso'}</td><td class="hreal num">${r.en.out?fmt(realMin(r.en)):'—'}</td><td>${th(r.en.fin,'Foto de entrada')}</td><td>${th(r.en.fout,'Foto de salida')}</td></tr>`;
+  }
+  if(!rows.length) h+=`<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted)">No hay fichajes en este período.</td></tr>`;
+  $('fTbl').innerHTML=h+'</tbody>';
+  cargarFotos($('fTbl'));
+}
 
 /* ======================= AJUSTES ======================= */
 let ajustesDirty=false, ajustesRendered=false;
