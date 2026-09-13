@@ -148,6 +148,7 @@ begin
     'turnos', c->'turnos',
     'fotos', coalesce((c->>'fotos')::boolean, true),
     'feriados', coalesce(c->'feriados','{}'::jsonb),
+    'alarmas', c->'alarmas',
     'adminPinLen', length(_admin_pin()),
     'fecha', to_char(f,'YYYY-MM-DD'),
     'entradas', (select coalesce(jsonb_object_agg(emp, ent), '{}'::jsonb)
@@ -265,6 +266,21 @@ begin
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('b64', b));
 end $$;
 
+-- Cierre automático: ficha la salida a la hora indicada a todos los que siguen "dentro" en ese turno (lo llama el modo fichaje).
+create or replace function auto_close(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare f date := (p->>'fecha')::date; s text := p->>'shift'; h text := p->>'hora'; r record; mins int; n int := 0;
+begin
+  if not _device_ok(p) then return jsonb_build_object('ok', false, 'code', 'device', 'error', 'Dispositivo no autorizado'); end if;
+  if f is null or s not in ('m','n') or h !~ '^\d{2}:\d{2}$' then return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Datos incompletos'); end if;
+  for r in select emp, entry from turnos where fecha = f and shift = s and entry->>'in' is not null and coalesce(entry->>'out','') = '' loop
+    mins := ((extract(epoch from (h::time - (r.entry->>'in')::time)) / 60)::int + 1440) % 1440;
+    perform _upsert_turno(f, r.emp, s, r.entry || jsonb_build_object('src', 'fichaje', 'out', h, 'min', mins, 'auto', true));
+    n := n + 1;
+  end loop;
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('cerrados', n));
+end $$;
+
 -- Importar una foto existente (migración). Requiere PIN del dueño.
 create or replace function import_foto(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -278,7 +294,7 @@ end $$;
 -- ---------- permisos ----------
 revoke execute on function _cfg(), _admin_pin(), _is_admin(jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
 grant execute on function ping(jsonb), check_admin(jsonb), check_pin(jsonb), kiosk_data(jsonb), load_all(jsonb), save_config(jsonb),
-  set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb), import_foto(jsonb),
+  set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb), import_foto(jsonb), auto_close(jsonb),
   authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb) to anon, authenticated;
 
 -- Para que PostgREST vea las funciones nuevas enseguida

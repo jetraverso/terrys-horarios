@@ -38,6 +38,7 @@ La URL y la clave anon van fijas en `index.html`, en las constantes `SUPABASE_UR
 - **Entrar a la administración.** En modo fichaje, tocá "Administración" arriba a la derecha y poné el PIN del dueño. Ahí están Semana, Planificar, Mes, Sueldos y Ajustes. El PIN se pide cada vez que se entra: no queda guardado.
 - **Volver al fichaje.** Botón "Modo fichaje" arriba a la derecha. Al recargar la página también vuelve sola al fichaje.
 - **Dar de baja un dispositivo.** Ajustes → Dispositivos autorizados → ✕. Deja de poder abrir la página al instante.
+- **Alarmas de fichaje.** Ajustes → Alarmas de fichaje: hora de aviso de entrada y de salida por turno, y margen en minutos. En modo fichaje suena la alarma y aparece un cartel con quiénes faltan; pasado el margen, a quien siga "dentro" se le ficha la salida sola (queda marcada como automática). El sonido necesita que alguien haya tocado la pantalla del iPad alguna vez desde que se abrió la página.
 
 ## Uso en el iPad / tablet del local
 
@@ -63,3 +64,5 @@ La URL y la clave anon van fijas en `index.html`, en las constantes `SUPABASE_UR
 ## Cambiar algo
 
 Editá `index.html` y hacé commit en la rama `main`. GitHub Pages publica el cambio en uno o dos minutos.
+
+Si cambia `schema.sql`, hay que volver a pegarlo entero en el SQL Editor de Supabase y ejecutarlo. Se puede correr las veces que haga falta: no borra datos.
