@@ -521,8 +521,8 @@ let mode='local';          // 'db' (artifact de claude.ai) | 'sb' (Supabase) | '
 let adminPin=null;         // PIN del dueño en modo Supabase (se guarda en la sesión del navegador)
 let kioskMeta={};          // longitudes de PIN en modo Supabase
 // Supabase: opcional, pegar acá la URL del proyecto y la clave "anon" para no tener que cargarlas en cada dispositivo
-const SUPABASE_URL='';
-const SUPABASE_KEY='';
+const SUPABASE_URL='https://xhtsgotuffrqxpzchwjq.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhodHNnb3R1ZmZycXhwemNod2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTQxNTcsImV4cCI6MjEwNDg5MDE1N30.SoDSBqxze3sjcbZIO7uPPFRbTZU--3mLUc3jsAPyPYE';
 function sbCfg(){ if(SUPABASE_URL&&SUPABASE_KEY) return {url:SUPABASE_URL,key:SUPABASE_KEY,fija:true}; try{ const j=JSON.parse(localStorage.getItem('terrys-sb')||'null'); return j&&j.url&&j.key?j:null; }catch(e){ return null; } }
 const sbUrl=()=>{ const c=sbCfg(); return c?c.url:''; };
 const SB_FN={ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
