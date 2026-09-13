@@ -281,12 +281,20 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 #fotoBig.on{display:flex}
 #fotoBig img{max-width:92vw;max-height:92vh;border-radius:12px;transform:scaleX(-1)}
 /* ---------- bloqueo (modo Supabase) ---------- */
-#lock{position:fixed;inset:0;z-index:90;background:var(--brand);color:var(--brand-ink);display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:18px}
+#lock{position:fixed;inset:0;z-index:130;background:var(--brand);color:var(--brand-ink);display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:18px}
 #lock.on{display:flex}
 #lock .wordmark{font-size:40px}
 #lock .k-box{color:var(--ink)}
 .lock-links{display:flex;gap:10px;justify-content:center;margin-top:14px}
 .lock-links button{background:none;border:0;color:var(--muted);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.auth-f{display:flex;flex-direction:column;gap:10px;margin:16px 0 6px;text-align:left}
+.auth-f label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.auth-f input{padding:12px;border:1px solid var(--line-2);border-radius:10px;background:var(--paper);font-size:18px}
+.auth-f input.pin{letter-spacing:.3em;font-size:22px;text-align:center}
+.dev-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.dev-item small{display:block;color:var(--muted);font-size:12px}
+.dev-item .x{background:none;border:0;color:var(--danger);font-weight:700}
+.dev-item.me b::after{content:" · este dispositivo";color:var(--ok);font-weight:600}
 .conn{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .conn input{flex:1;min-width:220px}
 .conn-st{font-size:13px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:var(--surface-2);color:var(--ink-2)}
@@ -415,6 +423,11 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
           <div class="conn"><input type="text" id="connKey" placeholder="Clave anon (empieza con eyJ… o sb_publishable_…)"><button class="btn primary" id="connGo">Conectar</button><button class="btn" id="connOff" hidden>Desconectar</button></div>
           <p style="margin-top:8px;font-size:13px;color:var(--muted)" id="connHelp"></p>
         </div>
+        <div class="panel" id="panelDev" style="margin-bottom:18px" hidden>
+          <h2>Dispositivos autorizados</h2>
+          <p>Solo estos dispositivos pueden abrir la página y fichar. Para autorizar uno nuevo, abrí la página ahí y poné el PIN del dueño.</p>
+          <div id="devList"><p style="color:var(--muted)">Cargando…</p></div>
+        </div>
         <div class="panel">
           <h2>Modo fichaje</h2>
           <p>PIN del dueño para salir del modo fichaje.</p>
@@ -454,7 +467,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
       <div class="k-date" id="kDate"></div>
       <div class="k-turno" id="kTurno"></div>
     </div>
-    <button class="k-exit" id="kExit">Salir del modo fichaje</button>
+    <button class="k-exit" id="kExit">Administración</button>
   </div>
   <div class="k-grid" id="kGrid"></div>
   <div class="k-modal" id="kModal"><div class="k-box" id="kBox"></div></div>
@@ -512,7 +525,8 @@ const SUPABASE_URL='';
 const SUPABASE_KEY='';
 function sbCfg(){ if(SUPABASE_URL&&SUPABASE_KEY) return {url:SUPABASE_URL,key:SUPABASE_KEY,fija:true}; try{ const j=JSON.parse(localStorage.getItem('terrys-sb')||'null'); return j&&j.url&&j.key?j:null; }catch(e){ return null; } }
 const sbUrl=()=>{ const c=sbCfg(); return c?c.url:''; };
-const SB_FN={ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto'};
+const SB_FN={ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
+const devToken=()=>{ try{ return localStorage.getItem('terrys-device')||''; }catch(e){ return ''; } };
 async function sbCall(cfg,action,data){
   const r=await fetch(`${cfg.url.replace(/\/+$/,'')}/rest/v1/rpc/${SB_FN[action]}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key},body:JSON.stringify({p:data||{}})});
   let j=null; try{ j=await r.json(); }catch(e){}
@@ -522,7 +536,7 @@ async function sbCall(cfg,action,data){
   return j.data;
 }
 const sb=(action,data)=>sbCall(sbCfg(),action,data);
-function sbErr(e){ console.error(e); if(e&&e.code==='pin'){ adminPin=null; try{sessionStorage.removeItem('terrys-admin-pin');}catch(x){} showLock('El PIN del dueño cambió. Volvé a ingresarlo.'); } else $('sync').textContent='error al guardar'; }
+function sbErr(e){ console.error(e); if(e&&e.code==='pin'){ adminPin=null; alert('El PIN del dueño cambió. Volvé a ingresarlo.'); setKiosk(true); } else if(e&&e.code==='device'){ try{localStorage.removeItem('terrys-device');}catch(x){} showAuth('Este dispositivo fue dado de baja.'); } else $('sync').textContent='error al guardar'; }
 const fotoUrl=id=>mode==='sb'?'':'/_blob/'+id;   // en modo Supabase la foto se pide aparte (cargarFotos)
 function fotoOpen(id,src){ const ov=$('fotoBig'); ov.querySelector('img').src=src||fotoUrl(id); ov.classList.add('on'); }
 async function cargarFotos(root){
@@ -611,7 +625,7 @@ const store={
   },
   async saveConfig(){
     if(mode==='db'){ try{ await db.doc('config/main').set(config); }catch(e){ $('sync').textContent='error al guardar'; console.error(e); } }
-    else if(mode==='sb'){ try{ await sb('saveConfig',{pin:adminPin,config}); adminPin=config.pinAdmin; try{sessionStorage.setItem('terrys-admin-pin',adminPin);}catch(x){} }catch(e){ sbErr(e); } }
+    else if(mode==='sb'){ try{ await sb('saveConfig',{pin:adminPin,config}); adminPin=config.pinAdmin; }catch(e){ sbErr(e); } }
     else lsSave({config,meses});
     renderAll();
   }
@@ -620,11 +634,8 @@ const store={
 /* ---- modo Supabase ---- */
 let sbPoll=null, kioskPoll=null;
 async function sbInit(){
-  let k=false; try{ k=localStorage.getItem('terrys-kiosk')==='1'; }catch(e){}
-  if(k){ setKiosk(true); return; }
-  try{ adminPin=sessionStorage.getItem('terrys-admin-pin'); }catch(e){ adminPin=null; }
-  if(adminPin){ try{ await sbLoad(); return; }catch(e){ if(e.code==='pin'){ adminPin=null; } else { showLock('No se pudo conectar con Supabase: '+e.message); return; } } }
-  showLock();
+  if(!devToken()){ showAuth(); return; }
+  setKiosk(true);   // siempre arranca en modo fichaje; la parte avanzada pide el PIN del dueño cada vez
 }
 async function sbLoad(){
   const d=await sb('load',{pin:adminPin});
@@ -633,41 +644,53 @@ async function sbLoad(){
   for(const r of (d.turnos||[])){ const key=mk(r.fecha); const m=nm[key]=nm[key]||{turnos:{},ajustes:{}}; const en=normEntry(r.entry); if(en) ((m.turnos[r.fecha]=m.turnos[r.fecha]||{})[r.emp]=m.turnos[r.fecha][r.emp]||{})[r.shift]=en; }
   for(const a of (d.ajustes||[])){ const m=nm[a.key]=nm[a.key]||{turnos:{},ajustes:{}}; m.ajustes[a.emp]={min:Number(a.min)||0,extra:Number(a.extra)||0,nota:a.nota||''}; }
   for(const k in meses) delete meses[k]; Object.assign(meses,nm);
-  try{ sessionStorage.setItem('terrys-admin-pin',adminPin); }catch(e){}
-  $('sync').textContent='supabase'; hideLock(); renderAll();
+  $('sync').textContent='supabase'; hideLock(); renderAll(); renderDevices();
   clearInterval(sbPoll); sbPoll=setInterval(()=>{ if(!kiosk&&adminPin&&!$('pop').classList.contains('on')&&!ajustesDirty) sbLoad().catch(()=>{}); },60000);
 }
 async function kioskRefresh(){
   if(mode!=='sb'||!kiosk) return;
   try{
-    const hoy=iso(new Date()); const d=await sb('kiosk',{fecha:hoy});
+    const hoy=iso(new Date()); const d=await sb('kiosk',{fecha:hoy,token:devToken()});
     config.empleados=(d.empleados||[]).map(e=>Object.assign({pin:''},e)); config.turnos=d.turnos||config.turnos; config.fotos=d.fotos!==false; config.feriados=d.feriados||{};
     kioskMeta={adminPinLen:d.adminPinLen||4};
     const key=mk(hoy); const m=meses[key]=meses[key]||{turnos:{},ajustes:{}}; const dia={};
     for(const e in (d.entradas||{})) for(const s of ['m','n']){ const en=normEntry(d.entradas[e][s]); if(en) (dia[e]=dia[e]||{})[s]=en; }
     m.turnos[hoy]=dia; $('sync').textContent='supabase'; renderKiosk();
-  }catch(e){ console.error(e); $('sync').textContent='sin conexión'; }
+  }catch(e){ console.error(e); if(e.code==='device'){ sbErr(e); return; } $('sync').textContent='sin conexión'; const st=$('kGrid'); if(st&&!st.children.length) st.innerHTML=`<p style="opacity:.7">Sin conexión con la base de datos: ${esc(e.message)}. Reintentando…</p>`; }
 }
 const padHtml=()=>`<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button class="txt" data-n="x">Cancelar</button><button data-n="0">0</button><button class="txt" data-n="del">Borrar</button></div>`;
-let lockPin='';
-function showLock(msg){
-  lockPin=''; $('lock').classList.add('on');
-  $('lockBox').innerHTML=`<h2>PIN del dueño</h2><div class="sub">Para ver y editar los horarios</div><div class="pinshow" id="lockShow"></div>${padHtml()}<div class="k-err" id="lockErr">${esc(msg||'')}</div><div class="lock-links"><button id="lockKiosk">Ir al modo fichaje</button><button id="lockOff">Cambiar conexión</button></div>`;
-  lockDots(); $('lockKiosk').onclick=()=>{ hideLock(); setKiosk(true); };
-  $('lockOff').onclick=()=>{ if(confirm('¿Desconectar esta página de Supabase? Vas a poder cargar otros datos de conexión en Ajustes.')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
+function showAuth(msg){
+  $('kiosk').classList.remove('on'); $('lock').classList.add('on');
+  $('lockBox').innerHTML=`<h2>Dispositivo no autorizado</h2><div class="sub">Para usar esta página en este dispositivo hace falta el PIN del dueño</div>
+    <form class="auth-f" id="authForm"><label>Nombre del dispositivo</label><input type="text" id="authNombre" placeholder="iPad del local, celular de Juan…" maxlength="60" autocomplete="off">
+    <label>PIN del dueño</label><input type="password" class="pin" id="authPin" inputmode="numeric" autocomplete="off" maxlength="8">
+    <button class="btn primary" type="submit" style="padding:12px;font-size:16px">Autorizar este dispositivo</button></form>
+    <div class="k-err" id="lockErr">${esc(msg||'')}</div>
+    <div class="lock-links">${sbCfg()&&sbCfg().fija?'':'<button type="button" id="lockOff">Cambiar conexión</button>'}</div>`;
+  const off=$('lockOff'); if(off) off.onclick=()=>{ if(confirm('¿Desconectar esta página de Supabase?')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
+  $('authForm').onsubmit=async e=>{
+    e.preventDefault(); const pin=$('authPin').value.trim(), nombre=$('authNombre').value.trim();
+    if(!pin){ $('lockErr').textContent='Ingresá el PIN'; return; }
+    $('lockErr').textContent='Verificando…';
+    try{ const d=await sb('authDevice',{pin,nombre:nombre||'Sin nombre'}); try{ localStorage.setItem('terrys-device',d.token); }catch(x){} hideLock(); setKiosk(true); }
+    catch(err){ $('lockErr').textContent=err.code==='pin'?'PIN incorrecto':('No se pudo conectar: '+err.message); $('authPin').value=''; }
+  };
+  setTimeout(()=>$('authNombre').focus(),50);
 }
+function showLock(msg){ showAuth(msg); }
 function hideLock(){ $('lock').classList.remove('on'); }
-function lockDots(){ const n=Math.max(4,lockPin.length+1); $('lockShow').innerHTML=[...Array(n)].map((_,i)=>`<i class="${i<lockPin.length?'f':''}"></i>`).join(''); }
-$('lockBox').addEventListener('click',async e=>{
-  const b=e.target.closest('[data-n]'); if(!b) return; const n=b.dataset.n;
-  if(n==='x'){ lockPin=''; lockDots(); return; }
-  if(n==='del'){ lockPin=lockPin.slice(0,-1); lockDots(); return; }
-  if(n==='ok'){ return; }
-  lockPin+=n; lockDots();
-  if(lockPin.length<4) return;
-  $('lockErr').textContent='Verificando…';
-  try{ const d=await sb('pinAdmin',{pin:lockPin}); if(d.ok){ adminPin=lockPin; lockPin=''; await sbLoad(); } else { const len=d.len||4; if(lockPin.length>=len){ lockPin=''; lockDots(); $('lockErr').textContent='PIN incorrecto'; } else $('lockErr').textContent=''; } }
-  catch(err){ $('lockErr').textContent='No se pudo conectar: '+err.message; }
+/* ---- dispositivos autorizados (Ajustes) ---- */
+async function renderDevices(){
+  const pan=$('panelDev'); if(mode!=='sb'||!adminPin){ pan.hidden=true; return; }
+  pan.hidden=false;
+  try{ const list=await sb('devices',{pin:adminPin}); const me=devToken();
+    $('devList').innerHTML=list.length?list.map(d=>`<div class="dev-item ${d.token===me?'me':''}"><span><b>${esc(d.nombre||'Sin nombre')}</b><small>autorizado ${d.creado} · último uso ${d.visto}</small></span><button class="x" data-t="${d.token}" title="Dar de baja">✕</button></div>`).join(''):'<p style="color:var(--muted)">No hay dispositivos autorizados.</p>';
+  }catch(e){ $('devList').innerHTML=`<p style="color:var(--danger)">No se pudo cargar: ${esc(e.message)}</p>`; }
+}
+$('devList').addEventListener('click',async e=>{
+  const b=e.target.closest('.x'); if(!b) return; const t=b.dataset.t;
+  if(!confirm(t===devToken()?'Vas a dar de baja ESTE dispositivo. Para volver a usarlo habrá que autorizarlo de nuevo. ¿Seguir?':'¿Dar de baja este dispositivo? No va a poder fichar hasta que lo autorices de nuevo.')) return;
+  try{ await sb('revokeDevice',{pin:adminPin,token:t}); if(t===devToken()){ try{localStorage.removeItem('terrys-device');}catch(x){} } renderDevices(); }catch(err){ sbErr(err); }
 });
 /* ---- panel de conexión ---- */
 function renderConn(){
@@ -750,7 +773,7 @@ let vista='semana';
 function renderAll(){ renderSemana(); renderPlan(); renderMes(); renderSueldos(); renderAjustesIfIdle(); renderKiosk(); }
 
 /* ---- tabs ---- */
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes')renderAjustes(true);});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes'){renderAjustes(true);renderDevices();}});
 
 /* ======================= SEMANA ======================= */
 $('wPrev').onclick=()=>{semana=addDays(semana,-7);renderSemana();};
@@ -1036,7 +1059,7 @@ function turnoActual(){ // qué turno corresponde según la hora
 }
 function setKiosk(on){
   kiosk=on; $('kiosk').classList.toggle('on',on); document.body.style.overflow=on?'hidden':''; if(!on) stopCam();
-  clearInterval(kioskPoll); if(on&&mode==='sb'){ kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
+  clearInterval(kioskPoll); if(on&&mode==='sb'){ adminPin=null; clearInterval(sbPoll); $('panelDev').hidden=true; kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
   try{ if(on) localStorage.setItem('terrys-kiosk','1'); else localStorage.removeItem('terrys-kiosk'); }catch(e){}
   if(on){ kSel=null; kStep=null; $('kModal').classList.remove('on'); renderKiosk(); }
 }
@@ -1107,9 +1130,9 @@ $('kBox').addEventListener('click',async e=>{
   if(kPin.length<kNeed()) return;
   if(mode==='sb'){
     kVerificando=true; $('kErr').textContent='Verificando…';
-    let ok=false; try{ const d=await sb(kStep==='admin'?'pinAdmin':'pin',{pin:kPin,emp:kSel?kSel.id:''}); ok=!!d.ok; }catch(err){ $('kErr').textContent='Sin conexión: '+err.message; kVerificando=false; kPin=''; return; }
+    let ok=false; try{ const d=await sb(kStep==='admin'?'pinAdmin':'pin',{pin:kPin,emp:kSel?kSel.id:'',token:devToken()}); ok=!!d.ok; }catch(err){ kVerificando=false; kPin=''; if(err.code==='device'){ sbErr(err); return; } $('kErr').textContent='Sin conexión: '+err.message; return; }
     kVerificando=false;
-    if(ok){ if(kStep==='admin'){ adminPin=kPin; closeKModal(); setKiosk(false); sbLoad().catch(err=>showLock('No se pudo cargar: '+err.message)); } else { kPinVerified=kPin; kStep='accion'; renderKModal(); } }
+    if(ok){ if(kStep==='admin'){ const pin=kPin; closeKModal(); setKiosk(false); adminPin=pin; sbLoad().catch(err=>{ alert('No se pudo cargar: '+err.message); setKiosk(true); }); } else { kPinVerified=kPin; kStep='accion'; renderKModal(); } }
     else { kPin=''; renderKModal(); $('kErr').textContent='PIN incorrecto'; }
     return;
   }
@@ -1128,7 +1151,7 @@ async function fichar(tipo){
   if(mode==='sb'){
     $('kOkMsg').textContent='Guardando…';
     try{
-      const d=await sb('fichar',{emp:quien.id,pin:kPinVerified||'',tipo,fecha:hoy,shift:s,hora:t,foto:foto||null});
+      const d=await sb('fichar',{emp:quien.id,pin:kPinVerified||'',tipo,fecha:hoy,shift:s,hora:t,foto:foto||null,token:devToken()});
       const entry=normEntry(d.entry); const m=meses[mk(hoy)]=meses[mk(hoy)]||{turnos:{},ajustes:{}}; ((m.turnos[hoy]=m.turnos[hoy]||{})[quien.id]=m.turnos[hoy][quien.id]||{})[s]=entry;
       $('kOkMsg').textContent=tipo==='in'?`Entrada ${t} · ${config.turnos[s].nombre}`:`Salida ${t} · ${fmt(realMin(entry))} trabajadas`;
       $('kOkFoto').textContent=(tipo==='in'?entry.fin:entry.fout)?'Foto guardada ✓':(config.fotos?'Sin foto':'');

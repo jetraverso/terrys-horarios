@@ -37,13 +37,22 @@ create table if not exists fotos (
   created_at timestamptz not null default now()
 );
 
+-- Dispositivos autorizados para fichar (iPad del local, celular del dueño...).
+create table if not exists dispositivos (
+  token uuid primary key default gen_random_uuid(),
+  nombre text not null default '',
+  created_at timestamptz not null default now(),
+  last_seen timestamptz not null default now()
+);
+
 -- Nadie accede a las tablas directamente: todo pasa por las funciones de abajo,
 -- que verifican los PIN. (RLS activo sin políticas = acceso denegado.)
 alter table app_config enable row level security;
 alter table turnos enable row level security;
 alter table ajustes_mes enable row level security;
 alter table fotos enable row level security;
-revoke all on app_config, turnos, ajustes_mes, fotos from anon, authenticated;
+alter table dispositivos enable row level security;
+revoke all on app_config, turnos, ajustes_mes, fotos, dispositivos from anon, authenticated;
 
 -- ---------- helpers internos ----------
 create or replace function _cfg() returns jsonb
@@ -66,6 +75,17 @@ language sql security definer set search_path = public as $$
   select coalesce((select e->>'pin' from jsonb_array_elements(coalesce(_cfg()->'empleados','[]'::jsonb)) e where e->>'id' = p_emp limit 1), '')
 $$;
 
+-- ¿El token pertenece a un dispositivo autorizado? (y anota la última vez que se usó)
+create or replace function _device_ok(p jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare t uuid; ok boolean;
+begin
+  begin t := (p->>'token')::uuid; exception when others then return false; end;
+  update dispositivos set last_seen = now() where token = t;
+  get diagnostics ok = row_count;
+  return ok;
+end $$;
+
 create or replace function _clean_entry(e jsonb) returns jsonb
 language sql immutable as $$
   select case when e is null or e = 'null'::jsonb then null else jsonb_strip_nulls(e) end
@@ -81,16 +101,45 @@ language sql security definer set search_path = public as $$
 $$;
 
 create or replace function check_pin(p jsonb) returns jsonb
-language sql security definer set search_path = public as $$
-  select jsonb_build_object('ok', true, 'data', jsonb_build_object('ok',
-    _emp_pin(p->>'emp') = '' or _emp_pin(p->>'emp') = coalesce(p->>'pin','')))
-$$;
+language plpgsql security definer set search_path = public as $$
+begin
+  if not _device_ok(p) then return jsonb_build_object('ok', false, 'code', 'device', 'error', 'Dispositivo no autorizado'); end if;
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('ok',
+    _emp_pin(p->>'emp') = '' or _emp_pin(p->>'emp') = coalesce(p->>'pin','')));
+end $$;
 
--- Datos que necesita la pantalla de fichaje (sin PIN): nombres, roles, horarios y los fichajes de hoy.
+-- Autorizar el dispositivo desde el que se llama (requiere PIN del dueño). Devuelve el token que la página guarda.
+create or replace function authorize_device(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare t uuid;
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  insert into dispositivos (nombre) values (left(coalesce(p->>'nombre',''), 60)) returning token into t;
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('token', t::text));
+end $$;
+
+create or replace function list_devices(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  return jsonb_build_object('ok', true, 'data', (select coalesce(jsonb_agg(jsonb_build_object(
+    'token', token::text, 'nombre', nombre, 'creado', to_char(created_at at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI'), 'visto', to_char(last_seen at time zone 'Europe/Madrid','DD/MM/YYYY HH24:MI')) order by created_at), '[]'::jsonb) from dispositivos));
+end $$;
+
+create or replace function revoke_device(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  delete from dispositivos where token = (p->>'token')::uuid;
+  return jsonb_build_object('ok', true, 'data', true);
+end $$;
+
+-- Datos que necesita la pantalla de fichaje (solo dispositivos autorizados): nombres, roles, horarios y los fichajes de hoy.
 create or replace function kiosk_data(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare c jsonb := _cfg(); f date := coalesce((p->>'fecha')::date, current_date);
 begin
+  if not _device_ok(p) then return jsonb_build_object('ok', false, 'code', 'device', 'error', 'Dispositivo no autorizado'); end if;
   return jsonb_build_object('ok', true, 'data', jsonb_build_object(
     'empleados', (select coalesce(jsonb_agg(jsonb_build_object(
         'id', e->>'id', 'nombre', coalesce(e->>'nombre',''), 'rol', coalesce(e->>'rol','camarero'),
@@ -181,6 +230,7 @@ declare
   e text := p->>'emp'; f date := (p->>'fecha')::date; s text := p->>'shift'; h text := p->>'hora'; t text := p->>'tipo';
   pin text := _emp_pin(e); actual jsonb; nuevo jsonb; fid uuid; mins int;
 begin
+  if not _device_ok(p) then return jsonb_build_object('ok', false, 'code', 'device', 'error', 'Dispositivo no autorizado'); end if;
   if e is null or f is null or s not in ('m','n') or h !~ '^\d{2}:\d{2}$' then
     return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Datos incompletos');
   end if;
@@ -215,10 +265,21 @@ begin
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('b64', b));
 end $$;
 
+-- Importar una foto existente (migración). Requiere PIN del dueño.
+create or replace function import_foto(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare fid uuid;
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  insert into fotos (data) values (p->>'b64') returning id into fid;
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('id', fid::text));
+end $$;
+
 -- ---------- permisos ----------
-revoke execute on function _cfg(), _admin_pin(), _is_admin(jsonb), _emp_pin(text), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
+revoke execute on function _cfg(), _admin_pin(), _is_admin(jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
 grant execute on function ping(jsonb), check_admin(jsonb), check_pin(jsonb), kiosk_data(jsonb), load_all(jsonb), save_config(jsonb),
-  set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb) to anon, authenticated;
+  set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb), import_foto(jsonb),
+  authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb) to anon, authenticated;
 
 -- Para que PostgREST vea las funciones nuevas enseguida
 notify pgrst, 'reload schema';

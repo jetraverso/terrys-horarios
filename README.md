@@ -29,34 +29,36 @@ Eso crea las tablas y las funciones que verifican los PIN. Nadie puede leer ni e
 
 ### 4. Conectar la página
 
-1. Abrí https://jetraverso.github.io/terrys-horarios/
-2. Pestaña **Ajustes** → panel **Conexión con Supabase**. Pegá la URL y la clave anon y tocá **Conectar**.
-3. La página se recarga y pide el **PIN del dueño**. Al principio es `1234`. Cambialo enseguida en Ajustes → Modo fichaje.
-4. Cargá los empleados, sus PIN y los horarios.
+La URL y la clave anon van fijas en `index.html`, en las constantes `SUPABASE_URL` y `SUPABASE_KEY` al principio del script. Con eso todos los dispositivos se conectan solos. (Si están vacías, la página muestra en Ajustes un panel para pegarlas a mano en cada dispositivo.)
 
-Hay que hacer el paso 4 en cada dispositivo que use la página (tu celular, la tablet del local). Si preferís no pegar los datos en cada uno, se pueden dejar fijos en `index.html` en las constantes `SUPABASE_URL` y `SUPABASE_KEY` del principio del script.
+## Cómo se usa
+
+- **La página siempre arranca en modo fichaje.** Muestra el reloj, el turno y una tarjeta por empleado. Nada más.
+- **Autorizar un dispositivo.** La primera vez que se abre en un dispositivo nuevo (el iPad, tu celular) pide un nombre y el **PIN del dueño**. Sin eso no muestra nada. Al principio el PIN es `1234`: cambialo enseguida.
+- **Entrar a la administración.** En modo fichaje, tocá "Administración" arriba a la derecha y poné el PIN del dueño. Ahí están Semana, Planificar, Mes, Sueldos y Ajustes. El PIN se pide cada vez que se entra: no queda guardado.
+- **Volver al fichaje.** Botón "Modo fichaje" arriba a la derecha. Al recargar la página también vuelve sola al fichaje.
+- **Dar de baja un dispositivo.** Ajustes → Dispositivos autorizados → ✕. Deja de poder abrir la página al instante.
 
 ## Uso en el iPad / tablet del local
 
-1. Abrí la página en Safari, conectala (paso 4) y tocá **Modo fichaje**.
-2. Aceptá el permiso de cámara la primera vez.
+1. Abrí la página en Safari, autorizá el dispositivo con el PIN del dueño.
+2. Aceptá el permiso de cámara la primera vez que alguien fiche.
 3. Safari → botón compartir → **Añadir a pantalla de inicio**, así abre a pantalla completa.
 4. Ajustes del iPad → Pantalla y brillo → Bloqueo automático → **Nunca**, y dejalo enchufado.
 5. Recomendado: activar **Acceso Guiado** (Ajustes → Accesibilidad) para que el iPad quede fijo en la página.
 
-En modo fichaje la página no muestra sueldos ni horarios: solo los nombres y los fichajes del día. Para salir hace falta el PIN del dueño.
-
 ## Cómo está protegido
 
-- La página es pública, pero los datos no: cada llamada a Supabase pasa por una función que exige el PIN del dueño (para ver o editar) o el PIN del empleado (para fichar).
+- El archivo de la página es público (está en GitHub Pages), pero no sirve de nada sin autorización: cada llamada a Supabase pasa por una función que exige un dispositivo autorizado (para fichar), el PIN del empleado (para fichar en su nombre) o el PIN del dueño (para ver o editar cualquier cosa).
 - Las fotos se guardan en la base de datos y solo se pueden ver con el PIN del dueño.
-- La clave `anon` de Supabase es pública por diseño; por sí sola no da acceso a nada porque las tablas tienen acceso denegado sin funciones.
+- La clave `anon` de Supabase es pública por diseño; por sí sola no da acceso a nada porque las tablas tienen acceso denegado y solo las funciones pueden tocarlas.
 - Cambiá el PIN del dueño (`1234`) apenas conectes.
 
 ## Archivos
 
-- `index.html` — toda la aplicación (funciona también como artifact de claude.ai y como archivo local sin conexión).
+- `index.html` — toda la aplicación.
 - `schema.sql` — tablas y funciones para Supabase.
+- `migrar.py` — importa a Supabase los datos exportados de la versión anterior (carpeta `migracion/`, que no se sube al repositorio).
 
 ## Cambiar algo
 
