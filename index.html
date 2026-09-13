@@ -1,0 +1,1152 @@
+<meta charset="utf-8">
+<title>Terry's Horarios</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#f4f2ed; --surface:#ffffff; --surface-2:#ebe8e1; --ink:#15130f; --ink-2:#4a463f; --muted:#7d786f; --line:#d8d3c8; --line-2:#c6c0b2;
+  --brand:#15130f; --brand-ink:#f4f2ed;
+  --cocina:#c4502a; --cocina-soft:#f7ddd2; --cocina-ink:#7a2c12;
+  --camarero:#2c6a8c; --camarero-soft:#d5e5ee; --camarero-ink:#163d53;
+  --dueno:#6b5aa3; --dueno-soft:#e4dff2; --dueno-ink:#3b2f6b;
+  --festivo:#e2b62a; --festivo-soft:#f8ecc2; --festivo-ink:#6b5206;
+  --ok:#2f7d4f; --ok-soft:#d8ecdf; --warn:#b85c00; --danger:#b3261e;
+  --pill-off:#f1eee7; --pill-off-ink:#a29c91; --shadow:0 12px 30px rgba(21,19,15,.14);
+  --display:"Bebas Neue","Impact","Arial Narrow",sans-serif; --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#141311; --surface:#1d1b18; --surface-2:#26231f; --ink:#f1ede5; --ink-2:#c9c3b7; --muted:#8f887b; --line:#332f29; --line-2:#453f37;
+  --brand:#f1ede5; --brand-ink:#141311;
+  --cocina:#e0693f; --cocina-soft:#40221a; --cocina-ink:#f4b9a1;
+  --camarero:#5c9fc4; --camarero-soft:#1b2f3b; --camarero-ink:#b6d6e8;
+  --dueno:#9d8bd6; --dueno-soft:#2a2440; --dueno-ink:#cfc4f0;
+  --festivo:#e8c14a; --festivo-soft:#3a3010; --festivo-ink:#f1dc8f;
+  --ok:#5cb47f; --ok-soft:#1c3326; --warn:#e29a4a; --danger:#e5665e;
+  --pill-off:#221f1b; --pill-off-ink:#5d574d; --shadow:0 12px 30px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --paper:#141311; --surface:#1d1b18; --surface-2:#26231f; --ink:#f1ede5; --ink-2:#c9c3b7; --muted:#8f887b; --line:#332f29; --line-2:#453f37;
+  --brand:#f1ede5; --brand-ink:#141311;
+  --cocina:#e0693f; --cocina-soft:#40221a; --cocina-ink:#f4b9a1;
+  --camarero:#5c9fc4; --camarero-soft:#1b2f3b; --camarero-ink:#b6d6e8;
+  --dueno:#9d8bd6; --dueno-soft:#2a2440; --dueno-ink:#cfc4f0;
+  --festivo:#e8c14a; --festivo-soft:#3a3010; --festivo-ink:#f1dc8f;
+  --ok:#5cb47f; --ok-soft:#1c3326; --warn:#e29a4a; --danger:#e5665e;
+  --pill-off:#221f1b; --pill-off-ink:#5d574d; --shadow:0 12px 30px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--camarero);outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:18px;padding:10px 20px;flex-wrap:wrap}
+.wordmark{font-family:var(--display);font-size:30px;letter-spacing:.04em;line-height:1;display:flex;align-items:baseline;gap:10px}
+.wordmark small{font-family:var(--body);font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{background:transparent;border:1px solid transparent;color:inherit;padding:7px 14px;border-radius:999px;font-weight:600;letter-spacing:.02em;opacity:.7}
+.tab:hover{opacity:1}
+.tab.on{background:var(--brand-ink);color:var(--brand);opacity:1}
+.btn-fichaje{border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;padding:7px 14px;border-radius:999px;font-weight:600;display:flex;align-items:center;gap:8px}
+:root[data-theme="dark"] .btn-fichaje{border-color:rgba(0,0,0,.35)}
+.btn-fichaje .dot{width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.sync{font-size:12px;opacity:.6;letter-spacing:.06em;text-transform:uppercase}
+
+/* ---------- layout ---------- */
+main{max-width:1440px;margin:0 auto;padding:22px 20px 60px}
+.view{display:none}.view.on{display:block}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.period{font-family:var(--display);font-size:38px;letter-spacing:.03em;line-height:1}
+.period small{font-family:var(--body);font-size:14px;letter-spacing:.02em;color:var(--muted);margin-left:10px}
+.nav{display:flex;gap:4px}
+.nav button,.btn{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:7px 12px;font-weight:600}
+.nav button:hover,.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn.danger{color:var(--danger)}
+.legend{margin-left:auto;display:flex;gap:14px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px}
+.hint{color:var(--muted);font-size:13px;margin-top:10px}
+
+/* ---------- week grid ---------- */
+.gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:800px;table-layout:fixed}
+.grid th,.grid td{border-bottom:1px solid var(--line);padding:0;vertical-align:top}
+.grid thead th{position:sticky;top:0;background:var(--surface);z-index:2;text-align:left;padding:8px 6px 6px;font-weight:500}
+.grid th.day{width:auto}
+.grid th.day .dow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.grid th.day .dn{font-family:var(--display);font-size:24px;line-height:1;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.grid th.day.hoy .dn{color:var(--camarero)}
+.grid th.day.festivo{background:var(--festivo-soft)}
+.fbadge{font-family:var(--body);font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:var(--festivo);color:#1a1400;padding:2px 6px;border-radius:4px;font-weight:700}
+.fname{font-size:12px;color:var(--festivo-ink);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.grid th.day button.fest{margin-top:4px;background:none;border:0;padding:0;font-size:11px;color:var(--muted);text-decoration:underline dotted;text-underline-offset:3px}
+.grid th.emp,.grid td.emp{position:sticky;left:0;background:var(--surface);z-index:3;width:112px;padding:8px 10px;border-right:1px solid var(--line);overflow:hidden}
+.emp .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid thead th.emp{z-index:4}
+.emp .name{font-weight:700;font-size:16px}
+.rol{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:4px;margin-top:3px}
+.rol.cocina{background:var(--cocina-soft);color:var(--cocina-ink)}
+.rol.camarero{background:var(--camarero-soft);color:var(--camarero-ink)}
+.rol.dueno{background:var(--dueno-soft);color:var(--dueno-ink)}
+.grid td.day{padding:5px 4px}
+.grid td.day.festivo{background:var(--festivo-soft)}
+.grid td.day.hoy{box-shadow:inset 2px 0 0 var(--camarero)}
+.pill{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;width:100%;border:1px solid transparent;border-radius:7px;padding:5px 7px;margin-bottom:4px;font-size:12px;font-weight:600;background:var(--pill-off);color:var(--pill-off-ink);text-align:left;user-select:none;-webkit-user-select:none;transition:transform .08s}
+.pill:last-child{margin-bottom:0}
+.pill:active{transform:scale(.97)}
+.pill .lab{letter-spacing:.05em;text-transform:uppercase;font-size:10px}
+.pill .hs{font-size:11px;font-weight:500;opacity:.85}
+.pill.on.cocina{background:var(--cocina);color:#fff}
+.pill.on.camarero{background:var(--camarero);color:#fff}
+.pill.on.dueno{background:var(--dueno);color:#fff}
+.pill.on.fich{outline:2px solid var(--ok);outline-offset:-2px}
+.pill.on.fich .hs::before{content:"✓ ";}
+.pill.on.abierto{outline:2px dashed var(--warn);outline-offset:-2px}
+.pill.on.manual .hs::before{content:"✎ ";}
+.grid td.tot{padding:8px 8px;border-left:1px solid var(--line);background:var(--surface-2)}
+.grid th.tot{background:var(--surface-2);border-left:1px solid var(--line);width:108px}
+.tot .big{font-family:var(--display);font-size:22px;line-height:1}
+.tot .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.tot .fest{font-size:12px;color:var(--festivo-ink);font-weight:600}
+.tot .real{font-size:12px;color:var(--ok);font-weight:700;margin-top:2px}
+.grid tfoot td{background:var(--surface-2);padding:6px 4px;font-size:11px;color:var(--ink-2);border-bottom:0}
+.grid tfoot td.emp{font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+.cov{display:flex;flex-direction:column;gap:3px}
+.cov div{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.cov .k{width:12px;color:var(--muted);font-weight:700}
+.cov b.c{color:var(--cocina)}.cov b.s{color:var(--camarero)}.cov b.d{color:var(--dueno)}
+.cov .zero{color:var(--danger);font-weight:700}
+.emp.libre .name{color:var(--muted);font-weight:500;font-style:italic}
+
+/* ---------- popover ---------- */
+.pop{position:fixed;z-index:50;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow);padding:14px;width:280px;display:none}
+.pop.on{display:block}
+.pop h3{font-family:var(--display);font-size:22px;letter-spacing:.03em}
+.pop .meta{font-size:13px;color:var(--muted);margin-bottom:10px}
+.pop label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;letter-spacing:.06em;text-transform:uppercase}
+.pop input{width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper)}
+.pop .row{display:flex;gap:6px;margin-top:12px}
+.pop .row .btn{flex:1;padding:7px 8px;font-size:13px}
+.fichinfo{background:var(--ok-soft);color:var(--ok);border-radius:7px;padding:7px 9px;font-size:13px;font-weight:600}
+
+/* ---------- month ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.card .v{font-family:var(--display);font-size:34px;line-height:1;margin-top:4px}
+.card .s{font-size:12px;color:var(--muted);margin-top:4px}
+.card.fest{background:var(--festivo-soft);border-color:transparent}
+.card.fest .v{color:var(--festivo-ink)}
+table.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:760px}
+.tblwrap{overflow-x:auto;border-radius:12px}
+.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right}
+.tbl th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td.h{font-family:var(--display);font-size:22px;line-height:1}
+.tbl td.fh{color:var(--festivo-ink);font-weight:600}
+.tbl td.rh{color:var(--ok);font-weight:700}
+.tbl td.rh small{color:var(--muted);font-weight:500}
+.tbl tfoot td{font-weight:700;background:var(--surface-2);border-bottom:0}
+.wk{display:flex;gap:3px;align-items:flex-end;height:26px;justify-content:flex-end}
+.wk i{display:block;width:14px;background:var(--line-2);border-radius:2px 2px 0 0;min-height:2px;position:relative}
+.wk i.c{background:var(--cocina)}.wk i.s{background:var(--camarero)}.wk i.d{background:var(--dueno)}
+.festlist{margin-top:18px;font-size:14px;color:var(--ink-2)}
+.festlist b{color:var(--festivo-ink)}
+
+/* ---------- planificar ---------- */
+.plantilla{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.plantilla h2{font-family:var(--display);font-size:24px;letter-spacing:.03em}
+.plantilla p{margin:4px 0 12px;color:var(--ink-2);font-size:14px}
+.plantilla table{border-collapse:collapse}
+.plantilla th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:4px 6px;text-align:center}
+.plantilla th:first-child{text-align:left}
+.plantilla td{padding:3px 6px;text-align:center}
+.plantilla td:first-child{text-align:left;font-weight:700;white-space:nowrap;padding-right:14px}
+.tcell{display:flex;gap:3px;justify-content:center}
+.mini{width:30px;height:24px;border-radius:5px;border:1px solid transparent;background:var(--pill-off);color:var(--pill-off-ink);font-size:11px;font-weight:700;padding:0;line-height:1}
+.mini.on.cocina{background:var(--cocina);color:#fff}.mini.on.camarero{background:var(--camarero);color:#fff}.mini.on.dueno{background:var(--dueno);color:#fff}
+.mini.on.fich{outline:2px solid var(--ok);outline-offset:-2px}.mini.on.abierto{outline:2px dashed var(--warn);outline-offset:-2px}
+.pl-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.pl-actions .msg{color:var(--ok);font-weight:600;font-size:14px}
+table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
+.pgrid th,.pgrid td{border-bottom:1px solid var(--line);padding:0}
+.pgrid thead th{position:sticky;top:0;background:var(--surface);z-index:2;padding:8px 2px 6px;text-align:center;font-weight:500}
+.pgrid th.d .dow{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pgrid th.d .dn{font-family:var(--display);font-size:20px;line-height:1}
+.pgrid th.d.fin .dow{color:var(--camarero)}
+.pgrid th.d.festivo,.pgrid td.d.festivo{background:var(--festivo-soft)}
+.pgrid th.d.hoy .dn{color:var(--camarero)}
+.pgrid th.emp,.pgrid td.emp{position:sticky;left:0;background:var(--surface);z-index:3;min-width:130px;padding:8px 12px;text-align:left;border-right:1px solid var(--line)}
+.pgrid thead th.emp{z-index:4}
+.pgrid td.d{padding:4px 2px;vertical-align:top}
+.pgrid td.d .mini{width:100%;min-width:26px;display:block;margin-bottom:3px}
+.pgrid td.tot{padding:8px 10px;min-width:96px;border-left:1px solid var(--line);background:var(--surface-2);text-align:right}
+.pgrid th.tot{background:var(--surface-2);border-left:1px solid var(--line)}
+.pgrid tfoot td{background:var(--surface-2);padding:6px 2px;font-size:11px;color:var(--ink-2);text-align:center;border-bottom:0}
+.pgrid tfoot td.emp{font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+.pgrid tfoot .zero{color:var(--danger);font-weight:700}
+
+/* ---------- sueldos ---------- */
+.sopts{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px}
+.sopts label{display:flex;align-items:center;gap:8px}
+.sopts select,.sopts input{padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper)}
+.sopts input{width:70px;text-align:right}
+.tbl input.pi,.tbl select.ps{padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper);font-variant-numeric:tabular-nums}
+.tbl input.pi{width:88px;text-align:right}
+.tbl select.ps{width:110px}
+.tbl td.eur{font-family:var(--display);font-size:24px;line-height:1;white-space:nowrap}
+.tbl td .eq{font-size:12px;color:var(--muted);display:block;margin-top:3px;font-family:var(--body)}
+.tbl td.dim{color:var(--muted)}
+.tbl input.pi.neg{color:var(--danger)}
+.sfoot{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.sfoot .msg{color:var(--ok);font-weight:600;font-size:14px}
+.tbl td.emp-cell{white-space:nowrap}
+
+/* ---------- settings ---------- */
+.set{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:860px){.set{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.panel h2{font-family:var(--display);font-size:26px;letter-spacing:.03em;margin-bottom:10px}
+.panel p{margin:0 0 10px;color:var(--ink-2);font-size:14px}
+.panel .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.panel input,.panel select{padding:7px 9px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper)}
+.panel input[type=text]{min-width:120px}
+.panel input.pin{width:80px;letter-spacing:.2em}
+.panel input.short{width:80px}
+.emprow{display:grid;grid-template-columns:24px minmax(110px,1fr) 118px 78px auto;gap:8px;align-items:center;margin-bottom:8px}
+.emprow input[type=text],.emprow select{width:100%;min-width:0}
+.emprow input.pin{width:78px}
+@media (max-width:520px){.emprow{grid-template-columns:24px 1fr 1fr;grid-template-rows:auto auto}.emprow .tog{grid-column:3}}
+.emprow .idx{font-family:var(--display);font-size:18px;color:var(--muted)}
+.emprow .tog{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.emprow.off input[type=text]{color:var(--muted)}
+.fest-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
+.fest-item .x{background:none;border:0;color:var(--danger);font-weight:700}
+.savebar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin:18px -20px -60px;padding:12px 20px;display:flex;gap:10px;align-items:center}
+.savebar .msg{color:var(--ok);font-weight:600;font-size:14px}
+.note{background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink-2)}
+
+/* ---------- kiosk ---------- */
+#kiosk{position:fixed;inset:0;z-index:100;background:var(--brand);color:var(--brand-ink);display:none;flex-direction:column;padding:28px;overflow:auto}
+#kiosk.on{display:flex}
+.k-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.k-clock{font-family:var(--display);font-size:clamp(64px,12vw,120px);line-height:.9;letter-spacing:.02em}
+.k-date{font-size:16px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;margin-top:8px}
+.k-turno{margin-top:10px;display:inline-block;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,.3);padding:5px 12px;border-radius:999px}
+:root[data-theme="dark"] .k-turno{border-color:rgba(0,0,0,.3)}
+.k-exit{background:transparent;border:1px solid rgba(255,255,255,.25);color:inherit;opacity:.6;border-radius:999px;padding:8px 14px;font-size:13px}
+:root[data-theme="dark"] .k-exit{border-color:rgba(0,0,0,.3)}
+.k-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:36px}
+.k-emp{border:0;border-radius:16px;padding:22px 20px;text-align:left;background:var(--surface);color:var(--ink);display:flex;flex-direction:column;gap:6px;min-height:130px;position:relative;transition:transform .08s}
+.k-emp:active{transform:scale(.97)}
+.k-emp .n{font-family:var(--display);font-size:34px;line-height:1}
+.k-emp .r{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+.k-emp .r.cocina{color:var(--cocina)}.k-emp .r.camarero{color:var(--camarero)}.k-emp .r.dueno{color:var(--dueno)}
+.k-emp .st{margin-top:auto;font-size:14px;color:var(--muted)}
+.k-emp.dentro{background:var(--ok);color:#fff}
+.k-emp.dentro .r,.k-emp.dentro .st{color:rgba(255,255,255,.85)}
+.k-emp.dentro .st{font-weight:700}
+.k-emp .hecho{position:absolute;top:14px;right:14px;font-size:12px;font-weight:700;opacity:.7}
+.k-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+.k-modal.on{display:flex}
+.k-box{background:var(--surface);color:var(--ink);border-radius:20px;padding:26px;width:min(420px,100%);text-align:center;box-shadow:var(--shadow)}
+.k-box h2{font-family:var(--display);font-size:40px;letter-spacing:.03em}
+.k-box .sub{color:var(--muted);margin-top:4px}
+.pinshow{display:flex;justify-content:center;gap:12px;margin:22px 0 16px}
+.pinshow i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);display:block}
+.pinshow i.f{background:var(--ink);border-color:var(--ink)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pad button{background:var(--surface-2);border:0;border-radius:12px;font-family:var(--display);font-size:30px;padding:14px 0}
+.pad button.txt{font-family:var(--body);font-size:14px;font-weight:600;color:var(--muted)}
+.k-err{color:var(--danger);font-weight:600;min-height:20px;margin-top:8px}
+.cam{position:relative;width:200px;height:150px;margin:14px auto 0;border-radius:14px;overflow:hidden;background:var(--surface-2)}
+.cam video,.cam img{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+.cam .camst{position:absolute;left:0;right:0;bottom:0;padding:4px;font-size:11px;font-weight:600;background:rgba(0,0,0,.55);color:#fff;letter-spacing:.06em;text-transform:uppercase}
+.fotos{display:flex;gap:8px;margin:8px 0 2px}
+.fotos figure{margin:0;flex:1;text-align:center;font-size:11px;color:var(--muted)}
+.fotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block;margin-bottom:3px;cursor:zoom-in;background:var(--surface-2)}
+.k-act{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.k-act .big{border:0;border-radius:14px;padding:20px;font-family:var(--display);font-size:32px;letter-spacing:.04em;color:#fff;background:var(--ok)}
+.k-act .big.out{background:var(--cocina)}
+.k-act .ghost{background:none;border:0;color:var(--muted);padding:8px;font-weight:600}
+.k-done{font-family:var(--display);font-size:30px;margin-top:12px}
+
+#fotoBig{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#fotoBig.on{display:flex}
+#fotoBig img{max-width:92vw;max-height:92vh;border-radius:12px;transform:scaleX(-1)}
+/* ---------- bloqueo (modo Supabase) ---------- */
+#lock{position:fixed;inset:0;z-index:90;background:var(--brand);color:var(--brand-ink);display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:18px}
+#lock.on{display:flex}
+#lock .wordmark{font-size:40px}
+#lock .k-box{color:var(--ink)}
+.lock-links{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.lock-links button{background:none;border:0;color:var(--muted);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.conn{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.conn input{flex:1;min-width:220px}
+.conn-st{font-size:13px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:var(--surface-2);color:var(--ink-2)}
+.conn-st.ok{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.conn-st.bad{background:var(--cocina-soft);color:var(--cocina-ink);font-weight:600}
+
+@media (max-width:640px){
+  .top{padding:10px 14px;gap:10px}.wordmark{font-size:24px}.tabs{margin-left:0;order:3;width:100%}
+  main{padding:14px 12px 60px}.period{font-size:28px}
+}
+@media print{
+  .top,.toolbar .nav,.btn-fichaje,.hint,.legend{display:none!important}
+  main{padding:0;max-width:none}.gridwrap{border:0}.grid{min-width:0}
+  .pill{border:1px solid #999;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wordmark">Terry's Burgers <small>Horarios</small></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-v="semana">Semana</button>
+    <button class="tab" data-v="plan">Planificar</button>
+    <button class="tab" data-v="mes">Mes</button>
+    <button class="tab" data-v="sueldos">Sueldos</button>
+    <button class="tab" data-v="ajustes">Ajustes</button>
+  </nav>
+  <span class="sync" id="sync">guardado local</span>
+  <button class="btn-fichaje" id="btnKiosk"><span class="dot"></span>Modo fichaje</button>
+</header>
+
+<main>
+  <!-- ================= SEMANA ================= -->
+  <section class="view on" id="v-semana">
+    <div class="toolbar">
+      <div class="nav"><button id="wPrev" aria-label="Semana anterior">‹</button><button id="wHoy">Hoy</button><button id="wNext" aria-label="Semana siguiente">›</button></div>
+      <h1 class="period" id="wTitle"></h1>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--cocina)"></i>Cocina</span>
+        <span><i class="sw" style="background:var(--camarero)"></i>Camarero</span>
+        <span><i class="sw" style="background:var(--dueno)"></i>Dueño</span>
+        <span><i class="sw" style="background:var(--festivo)"></i>Festivo</span>
+        <span><i class="sw" style="border:2px solid var(--ok)"></i>Fichado</span>
+      </div>
+    </div>
+    <div class="gridwrap"><table class="grid" id="wGrid"></table></div>
+    <p class="hint">Tocá un turno para marcarlo o quitarlo. Doble clic (o mantener apretado) para ajustar las horas o ver el fichaje y la foto. Tocá "festivo" debajo de un día para marcarlo.</p>
+  </section>
+
+  <!-- ================= PLANIFICAR ================= -->
+  <section class="view" id="v-plan">
+    <div class="toolbar">
+      <div class="nav"><button id="pPrev" aria-label="Mes anterior">‹</button><button id="pHoy">Este mes</button><button id="pNext" aria-label="Mes siguiente">›</button></div>
+      <h1 class="period" id="pTitle"></h1>
+    </div>
+    <div class="plantilla">
+      <h2>Horario habitual</h2>
+      <p>Marcá los turnos que cada uno hace normalmente cada semana. Después aplicalo al mes con un clic y ajustá a mano lo que cambie.</p>
+      <div style="overflow-x:auto"><table id="plTbl"></table></div>
+      <div class="pl-actions">
+        <button class="btn primary" id="plApply">Aplicar al mes</button>
+        <button class="btn" id="plSave">Guardar horario habitual</button>
+        <button class="btn danger" id="plClear">Borrar lo planificado del mes</button>
+        <span class="msg" id="plMsg"></span>
+      </div>
+    </div>
+    <div class="gridwrap"><table class="pgrid" id="pGrid"></table></div>
+    <p class="hint">Un toque marca o quita el turno planificado. Los turnos ya fichados (✓) no se tocan desde acá: se editan en Semana.</p>
+  </section>
+
+  <!-- ================= MES ================= -->
+  <section class="view" id="v-mes">
+    <div class="toolbar">
+      <div class="nav"><button id="mPrev" aria-label="Mes anterior">‹</button><button id="mHoy">Este mes</button><button id="mNext" aria-label="Mes siguiente">›</button></div>
+      <h1 class="period" id="mTitle"></h1>
+      <div class="legend"><button class="btn" id="btnCsv" hidden>Exportar CSV</button></div>
+    </div>
+    <div class="cards" id="mCards"></div>
+    <div class="tblwrap"><table class="tbl" id="mTbl"></table></div>
+    <div class="festlist" id="mFest"></div>
+  </section>
+
+  <!-- ================= SUELDOS ================= -->
+  <section class="view" id="v-sueldos">
+    <div class="toolbar">
+      <div class="nav"><button id="sPrev" aria-label="Mes anterior">‹</button><button id="sHoy">Este mes</button><button id="sNext" aria-label="Mes siguiente">›</button></div>
+      <h1 class="period" id="sTitle"></h1>
+      <div class="legend"><button class="btn" id="btnCsvS" hidden>Exportar CSV</button></div>
+    </div>
+    <div class="sopts">
+      <label>Horas que se pagan <select id="sBase"><option value="turno">Las del turno (planificadas o ajustadas)</option><option value="mixto">Las reales cuando hay fichaje, si no las del turno</option><option value="real">Solo las reales fichadas</option></select></label>
+      <label>Recargo en festivo <input type="text" inputmode="decimal" id="sRec"> %</label>
+    </div>
+    <div class="cards" id="sCards"></div>
+    <div class="tblwrap"><table class="tbl" id="sTbl"></table></div>
+    <div class="sfoot"><span class="msg" id="sMsg"></span></div>
+    <p class="hint">Por hora: se paga la tarifa por cada hora del mes. Sueldo mensual: se paga el sueldo fijo y se muestra a cuánto sale la hora según lo trabajado. "Ajuste de horas" suma o resta horas (por ejemplo, -2 o 3,5). "Extra €" suma o resta un importe fijo (un adelanto en negativo, un plus en positivo). Todo se guarda solo.</p>
+  </section>
+
+  <!-- ================= AJUSTES ================= -->
+  <section class="view" id="v-ajustes">
+    <div class="set">
+      <div class="panel">
+        <h2>Empleados</h2>
+        <p>Ocho lugares. Los que no tienen nombre no aparecen en la grilla. El PIN es el que usan para fichar (dejalo vacío si no querés pedirlo).</p>
+        <div id="empList"></div>
+      </div>
+      <div>
+        <div class="panel" style="margin-bottom:18px">
+          <h2>Festivos</h2>
+          <p>Las horas trabajadas en festivo se cuentan aparte en los totales.</p>
+          <div class="row"><input type="date" id="fDate"><input type="text" id="fName" placeholder="Nombre (opcional)"><button class="btn" id="fAdd">Agregar</button></div>
+          <div id="festList"></div>
+        </div>
+        <div class="panel" style="margin-bottom:18px">
+          <h2>Turnos</h2>
+          <div class="row">Mañana <input type="time" id="tMi"> a <input type="time" id="tMf"> <span class="num" id="tMd" style="color:var(--muted)"></span></div>
+          <div class="row">Noche <input type="time" id="tNi"> a <input type="time" id="tNf"> <span class="num" id="tNd" style="color:var(--muted)"></span></div>
+          <div class="row"><label><input type="checkbox" id="cReal"> Contar las horas reales del fichaje (entrada a salida) en vez de las del turno</label></div>
+        </div>
+        <div class="panel" id="panelConn" style="margin-bottom:18px">
+          <h2>Conexión con Supabase</h2>
+          <p>Para usar la página fuera de claude.ai (en GitHub Pages, en el iPad del local, en tu celular) los datos y las fotos se guardan en un proyecto de Supabase tuyo. Las instrucciones están en el archivo README del repositorio.</p>
+          <div class="conn-st" id="connSt"></div>
+          <div class="conn" style="margin-bottom:8px"><input type="text" id="connUrl" placeholder="URL del proyecto: https://xxxx.supabase.co"></div>
+          <div class="conn"><input type="text" id="connKey" placeholder="Clave anon (empieza con eyJ… o sb_publishable_…)"><button class="btn primary" id="connGo">Conectar</button><button class="btn" id="connOff" hidden>Desconectar</button></div>
+          <p style="margin-top:8px;font-size:13px;color:var(--muted)" id="connHelp"></p>
+        </div>
+        <div class="panel">
+          <h2>Modo fichaje</h2>
+          <p>PIN del dueño para salir del modo fichaje.</p>
+          <div class="row"><input type="text" inputmode="numeric" class="pin" id="pinAdmin" maxlength="6"></div>
+          <div class="row"><label><input type="checkbox" id="cFoto"> Sacar una foto con la cámara al fichar (queda guardada con el turno)</label></div>
+          <div class="note">El fichaje se usa en la tablet o el celular del local con esta misma página abierta. Cada empleado toca su nombre, pone su PIN y marca entrada o salida. El turno queda registrado en la grilla con un ✓.</div>
+        </div>
+      </div>
+    </div>
+    <div class="savebar"><button class="btn primary" id="btnSave">Guardar cambios</button><span class="msg" id="saveMsg"></span></div>
+  </section>
+</main>
+
+<!-- popover turno -->
+<div class="pop" id="pop">
+  <h3 id="popTitle"></h3>
+  <div class="meta" id="popMeta"></div>
+  <div id="popFich"></div>
+  <label>Horas contadas (h:mm)</label>
+  <input type="text" id="popHoras" placeholder="1:50" inputmode="numeric">
+  <div class="row"><button class="btn primary" id="popOk">Guardar</button><button class="btn danger" id="popDel">Quitar turno</button><button class="btn" id="popClose">Cerrar</button></div>
+</div>
+
+<div id="fotoBig"><img alt="Foto del fichaje"></div>
+
+<!-- ================= BLOQUEO ================= -->
+<div id="lock">
+  <div class="wordmark">Terry's Burgers <small>Horarios</small></div>
+  <div class="k-box" id="lockBox"></div>
+</div>
+
+<!-- ================= KIOSK ================= -->
+<div id="kiosk">
+  <div class="k-top">
+    <div>
+      <div class="k-clock num" id="kClock">--:--</div>
+      <div class="k-date" id="kDate"></div>
+      <div class="k-turno" id="kTurno"></div>
+    </div>
+    <button class="k-exit" id="kExit">Salir del modo fichaje</button>
+  </div>
+  <div class="k-grid" id="kGrid"></div>
+  <div class="k-modal" id="kModal"><div class="k-box" id="kBox"></div></div>
+</div>
+
+<script>
+/* ======================= utilidades ======================= */
+const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const mk=d=>d.slice(0,7);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const monday=d=>{const x=new Date(d);x.setHours(0,0,0,0);const w=(x.getDay()+6)%7;return addDays(x,-w);};
+const hm2min=s=>{if(!s)return 0;const [h,m]=s.split(':').map(Number);return h*60+(m||0);};
+const fmt=min=>{min=Math.round(min||0);const h=Math.floor(min/60),m=min%60;return m?`${h}h ${pad(m)}m`:`${h}h`;};
+const fmtShort=min=>{min=Math.round(min||0);return `${Math.floor(min/60)}:${pad(min%60)}`;};
+const parseHoras=s=>{s=(s||'').trim().replace(',','.');if(!s)return null;if(s.includes(':')){const [h,m]=s.split(':');return (Number(h)||0)*60+(Number(m)||0);}const f=Number(s);return isNaN(f)?null:Math.round(f*60);};
+const nowHM=()=>{const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`;};
+const $=id=>document.getElementById(id);
+const ROLES={cocina:{label:'Cocina',short:'coc',cls:'c'},camarero:{label:'Camarero',short:'cam',cls:'s'},dueno:{label:'Dueño',short:'due',cls:'d'}};
+const rolLabel=r=>(ROLES[r]||ROLES.camarero).label; const rolCls=r=>(ROLES[r]||ROLES.camarero).cls;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ======================= datos ======================= */
+const DEF_CONFIG={
+  empleados:[
+    {id:'e1',nombre:'Matias',rol:'cocina',pin:'',activo:true},
+    {id:'e2',nombre:'Martin',rol:'cocina',pin:'',activo:true},
+    {id:'e3',nombre:'Gordo',rol:'cocina',pin:'',activo:true},
+    {id:'e4',nombre:'Magui',rol:'camarero',pin:'',activo:true},
+    {id:'e5',nombre:'Juan',rol:'camarero',pin:'',activo:true},
+    {id:'e6',nombre:'',rol:'camarero',pin:'',activo:true},
+    {id:'e7',nombre:'',rol:'camarero',pin:'',activo:true},
+    {id:'e8',nombre:'',rol:'cocina',pin:'',activo:true},
+  ],
+  feriados:{},
+  plantilla:{},
+  turnos:{m:{nombre:'Mañana',ini:'12:00',fin:'13:50'},n:{nombre:'Noche',ini:'19:30',fin:'23:30'}},
+  pinAdmin:'1234',
+  contarReales:false,
+  fotos:true,
+  pagos:{base:'turno',recargo:0,emp:{}}
+};
+let config=structuredClone(DEF_CONFIG);
+const meses={};            // 'YYYY-MM' -> {turnos:{fecha:{empId:{m:entry,n:entry}}}}
+let db=null, downloads=null, assets=null;
+let mode='local';          // 'db' (artifact de claude.ai) | 'sb' (Supabase) | 'local' (solo este dispositivo)
+let adminPin=null;         // PIN del dueño en modo Supabase (se guarda en la sesión del navegador)
+let kioskMeta={};          // longitudes de PIN en modo Supabase
+// Supabase: opcional, pegar acá la URL del proyecto y la clave "anon" para no tener que cargarlas en cada dispositivo
+const SUPABASE_URL='';
+const SUPABASE_KEY='';
+function sbCfg(){ if(SUPABASE_URL&&SUPABASE_KEY) return {url:SUPABASE_URL,key:SUPABASE_KEY,fija:true}; try{ const j=JSON.parse(localStorage.getItem('terrys-sb')||'null'); return j&&j.url&&j.key?j:null; }catch(e){ return null; } }
+const sbUrl=()=>{ const c=sbCfg(); return c?c.url:''; };
+const SB_FN={ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto'};
+async function sbCall(cfg,action,data){
+  const r=await fetch(`${cfg.url.replace(/\/+$/,'')}/rest/v1/rpc/${SB_FN[action]}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key},body:JSON.stringify({p:data||{}})});
+  let j=null; try{ j=await r.json(); }catch(e){}
+  if(!r.ok){ const msg=(j&&(j.message||j.hint||j.error))||('HTTP '+r.status); throw Object.assign(new Error(r.status===404?'No se encontró la función en Supabase. ¿Ejecutaste el archivo schema.sql?':msg),{code:'http'}); }
+  if(!j||typeof j!=='object') throw Object.assign(new Error('Respuesta inválida de Supabase'),{code:'bad'});
+  if(!j.ok) throw Object.assign(new Error(j.error||'Error'),{code:j.code||'error'});
+  return j.data;
+}
+const sb=(action,data)=>sbCall(sbCfg(),action,data);
+function sbErr(e){ console.error(e); if(e&&e.code==='pin'){ adminPin=null; try{sessionStorage.removeItem('terrys-admin-pin');}catch(x){} showLock('El PIN del dueño cambió. Volvé a ingresarlo.'); } else $('sync').textContent='error al guardar'; }
+const fotoUrl=id=>mode==='sb'?'':'/_blob/'+id;   // en modo Supabase la foto se pide aparte (cargarFotos)
+function fotoOpen(id,src){ const ov=$('fotoBig'); ov.querySelector('img').src=src||fotoUrl(id); ov.classList.add('on'); }
+async function cargarFotos(root){
+  if(mode!=='sb') return;
+  for(const im of root.querySelectorAll('img[data-id]')){ try{ const d=await sb('foto',{pin:adminPin,id:im.dataset.id}); if(d&&d.b64) im.src='data:image/jpeg;base64,'+d.b64; }catch(e){ im.alt='Sin foto'; } }
+}
+const subs={};
+
+/* ---- almacenamiento: db compartida o localStorage ---- */
+const LS='terrys-horarios-v1';
+function lsLoad(){try{return JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){return {};}}
+function lsSave(all){try{localStorage.setItem(LS,JSON.stringify(all));}catch(e){}}
+
+function normEntry(v){ if(!v||typeof v!=='object'||!v.src) return null; const e={src:v.src}; if(v.in)e.in=v.in; if(v.out)e.out=v.out; if(typeof v.min==='number')e.min=v.min; if(typeof v.fin==='string'&&v.fin)e.fin=v.fin; if(typeof v.fout==='string'&&v.fout)e.fout=v.fout; return e; }
+const fullEntry=en=>en?{src:en.src,in:en.in||null,out:en.out||null,min:typeof en.min==='number'?en.min:null,fin:en.fin||null,fout:en.fout||null}:null;
+function cleanMes(raw){const out={turnos:{},ajustes:{}};const aj=(raw&&raw.ajustes)||{};for(const e in aj){const a=aj[e];if(a&&typeof a==='object')out.ajustes[e]={min:typeof a.min==='number'?a.min:0,extra:typeof a.extra==='number'?a.extra:0,nota:typeof a.nota==='string'?a.nota:''};}const t=(raw&&raw.turnos)||{};for(const f in t){for(const e in t[f]){for(const s of ['m','n']){const v=normEntry(t[f][e]&&t[f][e][s]);if(v){((out.turnos[f]=out.turnos[f]||{})[e]=out.turnos[f][e]||{})[s]=v;}}}}return out;}
+
+const store={
+  async init(){
+    try{ db=await window.claude?.use?.('db'); }catch(e){ db=null; }
+    try{ downloads=await window.claude?.use?.('downloads'); }catch(e){ downloads=null; }
+    try{ assets=await window.claude?.use?.('assets'); }catch(e){ assets=null; }
+    if(downloads){ $('btnCsv').hidden=false; $('btnCsvS').hidden=false; }
+    if(db){
+      mode='db'; $('sync').textContent='sincronizado';
+      const ref=db.doc('config/main');
+      const snap=await ref.get();
+      if(!snap.exists){ await ref.set(config); }
+      ref.onSnapshot(s=>{ if(s.exists){ config=mergeConfig(s.data()); renderAll(); } }, e=>{ $('sync').textContent='sin conexión'; });
+    }else if(sbUrl()){
+      mode='sb'; $('sync').textContent='supabase';
+      await sbInit();
+    }else{
+      mode='local'; $('sync').textContent='solo este dispositivo';
+      const all=lsLoad();
+      if(all.config) config=mergeConfig(all.config);
+      for(const k in (all.meses||{})) meses[k]=cleanMes(all.meses[k]);
+      renderAll();
+    }
+    renderConn();
+  },
+  watchMes(key){
+    if(subs[key]) return;
+    subs[key]=true;
+    if(mode==='db'){
+      db.doc('meses/'+key).onSnapshot(s=>{ meses[key]=cleanMes(s.exists?s.data():{}); renderAll(); }, e=>{});
+    }else{
+      meses[key]=meses[key]||{turnos:{},ajustes:{}};
+    }
+  },
+  async setTurno(fecha,emp,shift,entry){
+    const key=mk(fecha);
+    const m=meses[key]=meses[key]||{turnos:{}};
+    // optimista
+    const cel=(m.turnos[fecha]=m.turnos[fecha]||{}); cel[emp]=cel[emp]||{};
+    if(entry) cel[emp][shift]=entry; else delete cel[emp][shift];
+    renderAll();
+    if(mode==='db'){
+      const ref=db.doc('meses/'+key);
+      const full=fullEntry(entry);
+      try{
+        const s=await ref.get(); if(!s.exists) await ref.set({turnos:{}});
+        await ref.update({turnos:{[fecha]:{[emp]:{[shift]:full}}}});
+      }catch(e){ $('sync').textContent='error al guardar'; console.error(e); }
+    }else if(mode==='sb'){ try{ await sb('setTurno',{pin:adminPin,fecha,emp,shift,entry:fullEntry(entry)}); }catch(e){ sbErr(e); } }
+    else{ lsSave({config,meses}); }
+  },
+  async setTurnosBatch(key,changes){ // changes: {fecha:{emp:{shift:entry|null}}}
+    const m=meses[key]=meses[key]||{turnos:{}}; const full={};
+    for(const f in changes){for(const e in changes[f]){for(const s in changes[f][e]){
+      const en=changes[f][e][s]; const cel=(m.turnos[f]=m.turnos[f]||{}); cel[e]=cel[e]||{};
+      if(en) cel[e][s]=en; else delete cel[e][s];
+      ((full[f]=full[f]||{})[e]=full[f][e]||{})[s]=fullEntry(en);
+    }}}
+    renderAll();
+    if(mode==='db'){ const ref=db.doc('meses/'+key); try{ const sn=await ref.get(); if(!sn.exists) await ref.set({turnos:{}}); await ref.update({turnos:full}); }catch(e){ $('sync').textContent='error al guardar'; console.error(e); } }
+    else if(mode==='sb'){ try{ await sb('setTurnos',{pin:adminPin,changes:full}); }catch(e){ sbErr(e); } }
+    else lsSave({config,meses});
+  },
+  async setAjuste(key,emp,data){
+    const m=meses[key]=meses[key]||{turnos:{},ajustes:{}}; m.ajustes=m.ajustes||{};
+    m.ajustes[emp]=Object.assign({min:0,extra:0,nota:''},m.ajustes[emp]||{},data);
+    if(mode==='db'){ const ref=db.doc('meses/'+key); try{ const sn=await ref.get(); if(!sn.exists) await ref.set({turnos:{},ajustes:{}}); await ref.update({ajustes:{[emp]:m.ajustes[emp]}}); }catch(e){ $('sync').textContent='error al guardar'; console.error(e); } }
+    else if(mode==='sb'){ try{ await sb('setAjuste',{pin:adminPin,key,emp,data:m.ajustes[emp]}); }catch(e){ sbErr(e); } }
+    else lsSave({config,meses});
+  },
+  async saveConfig(){
+    if(mode==='db'){ try{ await db.doc('config/main').set(config); }catch(e){ $('sync').textContent='error al guardar'; console.error(e); } }
+    else if(mode==='sb'){ try{ await sb('saveConfig',{pin:adminPin,config}); adminPin=config.pinAdmin; try{sessionStorage.setItem('terrys-admin-pin',adminPin);}catch(x){} }catch(e){ sbErr(e); } }
+    else lsSave({config,meses});
+    renderAll();
+  }
+};
+
+/* ---- modo Supabase ---- */
+let sbPoll=null, kioskPoll=null;
+async function sbInit(){
+  let k=false; try{ k=localStorage.getItem('terrys-kiosk')==='1'; }catch(e){}
+  if(k){ setKiosk(true); return; }
+  try{ adminPin=sessionStorage.getItem('terrys-admin-pin'); }catch(e){ adminPin=null; }
+  if(adminPin){ try{ await sbLoad(); return; }catch(e){ if(e.code==='pin'){ adminPin=null; } else { showLock('No se pudo conectar con Supabase: '+e.message); return; } } }
+  showLock();
+}
+async function sbLoad(){
+  const d=await sb('load',{pin:adminPin});
+  config=mergeConfig(d.config||{});
+  const nm={};
+  for(const r of (d.turnos||[])){ const key=mk(r.fecha); const m=nm[key]=nm[key]||{turnos:{},ajustes:{}}; const en=normEntry(r.entry); if(en) ((m.turnos[r.fecha]=m.turnos[r.fecha]||{})[r.emp]=m.turnos[r.fecha][r.emp]||{})[r.shift]=en; }
+  for(const a of (d.ajustes||[])){ const m=nm[a.key]=nm[a.key]||{turnos:{},ajustes:{}}; m.ajustes[a.emp]={min:Number(a.min)||0,extra:Number(a.extra)||0,nota:a.nota||''}; }
+  for(const k in meses) delete meses[k]; Object.assign(meses,nm);
+  try{ sessionStorage.setItem('terrys-admin-pin',adminPin); }catch(e){}
+  $('sync').textContent='supabase'; hideLock(); renderAll();
+  clearInterval(sbPoll); sbPoll=setInterval(()=>{ if(!kiosk&&adminPin&&!$('pop').classList.contains('on')&&!ajustesDirty) sbLoad().catch(()=>{}); },60000);
+}
+async function kioskRefresh(){
+  if(mode!=='sb'||!kiosk) return;
+  try{
+    const hoy=iso(new Date()); const d=await sb('kiosk',{fecha:hoy});
+    config.empleados=(d.empleados||[]).map(e=>Object.assign({pin:''},e)); config.turnos=d.turnos||config.turnos; config.fotos=d.fotos!==false; config.feriados=d.feriados||{};
+    kioskMeta={adminPinLen:d.adminPinLen||4};
+    const key=mk(hoy); const m=meses[key]=meses[key]||{turnos:{},ajustes:{}}; const dia={};
+    for(const e in (d.entradas||{})) for(const s of ['m','n']){ const en=normEntry(d.entradas[e][s]); if(en) (dia[e]=dia[e]||{})[s]=en; }
+    m.turnos[hoy]=dia; $('sync').textContent='supabase'; renderKiosk();
+  }catch(e){ console.error(e); $('sync').textContent='sin conexión'; }
+}
+const padHtml=()=>`<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button class="txt" data-n="x">Cancelar</button><button data-n="0">0</button><button class="txt" data-n="del">Borrar</button></div>`;
+let lockPin='';
+function showLock(msg){
+  lockPin=''; $('lock').classList.add('on');
+  $('lockBox').innerHTML=`<h2>PIN del dueño</h2><div class="sub">Para ver y editar los horarios</div><div class="pinshow" id="lockShow"></div>${padHtml()}<div class="k-err" id="lockErr">${esc(msg||'')}</div><div class="lock-links"><button id="lockKiosk">Ir al modo fichaje</button><button id="lockOff">Cambiar conexión</button></div>`;
+  lockDots(); $('lockKiosk').onclick=()=>{ hideLock(); setKiosk(true); };
+  $('lockOff').onclick=()=>{ if(confirm('¿Desconectar esta página de Supabase? Vas a poder cargar otros datos de conexión en Ajustes.')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
+}
+function hideLock(){ $('lock').classList.remove('on'); }
+function lockDots(){ const n=Math.max(4,lockPin.length+1); $('lockShow').innerHTML=[...Array(n)].map((_,i)=>`<i class="${i<lockPin.length?'f':''}"></i>`).join(''); }
+$('lockBox').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-n]'); if(!b) return; const n=b.dataset.n;
+  if(n==='x'){ lockPin=''; lockDots(); return; }
+  if(n==='del'){ lockPin=lockPin.slice(0,-1); lockDots(); return; }
+  if(n==='ok'){ return; }
+  lockPin+=n; lockDots();
+  if(lockPin.length<4) return;
+  $('lockErr').textContent='Verificando…';
+  try{ const d=await sb('pinAdmin',{pin:lockPin}); if(d.ok){ adminPin=lockPin; lockPin=''; await sbLoad(); } else { const len=d.len||4; if(lockPin.length>=len){ lockPin=''; lockDots(); $('lockErr').textContent='PIN incorrecto'; } else $('lockErr').textContent=''; } }
+  catch(err){ $('lockErr').textContent='No se pudo conectar: '+err.message; }
+});
+/* ---- panel de conexión ---- */
+function renderConn(){
+  const st=$('connSt'); if(!st) return;
+  if(mode==='db'){ $('panelConn').hidden=true; return; }
+  $('panelConn').hidden=false;
+  const c=sbCfg();
+  if(mode==='sb'){ st.className='conn-st ok'; st.textContent='Conectada a Supabase'+(c&&c.fija?' (datos fijos en el archivo)':''); $('connUrl').value=c.url; $('connKey').value=c.key; $('connOff').hidden=!!(c&&c.fija); $('connHelp').textContent='Todos los dispositivos conectados al mismo proyecto ven los mismos datos.'; }
+  else { st.className='conn-st'; st.textContent='Sin conexión: los datos se guardan solo en este dispositivo.'; $('connOff').hidden=true; $('connHelp').textContent='Pegá la URL del proyecto y la clave anon de Supabase (Project Settings → API) y tocá Conectar.'; }
+}
+$('connGo').onclick=async()=>{
+  const u=$('connUrl').value.trim().replace(/\/+$/,''), k=$('connKey').value.trim();
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(u)){ $('connSt').className='conn-st bad'; $('connSt').textContent='La URL tiene que ser como https://xxxx.supabase.co'; return; }
+  if(k.length<20){ $('connSt').className='conn-st bad'; $('connSt').textContent='Falta la clave anon.'; return; }
+  $('connSt').className='conn-st'; $('connSt').textContent='Probando conexión…';
+  try{ const d=await sbCall({url:u,key:k},'ping',{}); if(d!=='pong') throw new Error('respuesta inesperada'); }
+  catch(e){ $('connSt').className='conn-st bad'; $('connSt').textContent='No respondió: '+e.message; return; }
+  try{ localStorage.setItem('terrys-sb',JSON.stringify({url:u,key:k})); }catch(e){}
+  location.reload();
+};
+$('connOff').onclick=()=>{ if(confirm('¿Desconectar de Supabase? Los datos quedan en Supabase; esta página pasa a guardar solo en este dispositivo.')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
+function mergeConfig(c){
+  const out=structuredClone(DEF_CONFIG);
+  if(Array.isArray(c.empleados)) out.empleados=out.empleados.map((d,i)=>Object.assign({},d,structuredClone(c.empleados[i]||{})));
+  if(c.feriados&&typeof c.feriados==='object') out.feriados=structuredClone(c.feriados);
+  if(c.plantilla&&typeof c.plantilla==='object') out.plantilla=structuredClone(c.plantilla);
+  out.empleados.forEach(e=>{if(!ROLES[e.rol])e.rol='camarero';});
+  if(c.turnos){ for(const s of ['m','n']) if(c.turnos[s]) Object.assign(out.turnos[s],c.turnos[s]); }
+  if(typeof c.pinAdmin==='string') out.pinAdmin=c.pinAdmin;
+  out.contarReales=!!c.contarReales;
+  out.fotos=c.fotos!==false;
+  if(c.pagos&&typeof c.pagos==='object'){ out.pagos=Object.assign({base:'turno',recargo:0,emp:{}},structuredClone(c.pagos)); if(!out.pagos.emp||typeof out.pagos.emp!=='object') out.pagos.emp={}; }
+  return out;
+}
+
+/* ======================= cálculo ======================= */
+const nominal=s=>{const t=config.turnos[s];let d=hm2min(t.fin)-hm2min(t.ini);if(d<0)d+=1440;return d;};
+function minutosDe(entry,shift){
+  if(!entry) return 0;
+  if(entry.src==='manual'&&typeof entry.min==='number') return entry.min;
+  if(entry.src==='fichaje'&&config.contarReales&&typeof entry.min==='number') return entry.min;
+  return nominal(shift);
+}
+const realMin=e=>{if(!e||!e.in||!e.out)return 0;let x=hm2min(e.out)-hm2min(e.in);if(x<0)x+=1440;return x;};
+const getEntry=(fecha,emp,shift)=>{const m=meses[mk(fecha)];return m&&m.turnos[fecha]&&m.turnos[fecha][emp]&&m.turnos[fecha][emp][shift]||null;};
+const esFestivo=f=>Object.prototype.hasOwnProperty.call(config.feriados,f);
+const empActivos=()=>config.empleados.filter(e=>e.nombre.trim());
+function resumen(emp,fechas){
+  const r={min:0,festMin:0,m:0,n:0,dias:0,real:0,fich:0,abiertos:0};
+  for(const f of fechas){let dia=false;for(const s of ['m','n']){const e=getEntry(f,emp,s);if(!e)continue;const mn=minutosDe(e,s);r.min+=mn;r[s]++;dia=true;if(esFestivo(f))r.festMin+=mn;
+    if(e.src==='fichaje'||(e.src==='manual'&&e.in)){ if(e.out){r.real+=realMin(e);r.fich++;} else r.abiertos++; }}
+    if(dia)r.dias++;}
+  return r;
+}
+
+function resumenPago(emp,fechas,base){
+  const r={min:0,festMin:0};
+  for(const f of fechas)for(const s of ['m','n']){const e=getEntry(f,emp,s);if(!e)continue;const fich=e.src==='fichaje'&&e.out;let mn;
+    if(base==='real') mn=fich?realMin(e):0; else if(base==='mixto') mn=fich?realMin(e):minutosDe(e,s); else mn=(e.src==='fichaje'&&!config.contarReales)?nominal(s):minutosDe(e,s);
+    r.min+=mn; if(esFestivo(f)) r.festMin+=mn;}
+  return r;
+}
+const pagoDe=id=>Object.assign({modo:'hora',tarifa:0,sueldo:0},(config.pagos.emp||{})[id]||{});
+const fmtEur=n=>(Math.round((n||0)*100)/100).toLocaleString('es-ES',{style:'currency',currency:'EUR'});
+const numOf=v=>{const n=Number(String(v||'').replace(',','.'));return isNaN(n)?0:n;};
+function calcPago(e,dias,key){
+  const p=pagoDe(e.id), r=resumenPago(e.id,dias,config.pagos.base), aj=((meses[key]||{}).ajustes||{})[e.id]||{min:0,extra:0};
+  const minPagar=r.min+(aj.min||0); const h=minPagar/60, hf=r.festMin/60; const rec=(numOf(config.pagos.recargo)||0)/100;
+  let base=0, tarifaEq=0;
+  if(p.modo==='mensual'){ base=numOf(p.sueldo); tarifaEq=h>0?base/h:0; }
+  else { tarifaEq=numOf(p.tarifa); base=h*tarifaEq; }
+  const plusFest=hf*tarifaEq*rec; const total=base+plusFest+(aj.extra||0);
+  return {p,r,aj,minPagar,h,hf,tarifaEq,base,plusFest,total};
+}
+
+/* ======================= estado UI ======================= */
+let semana=monday(new Date());
+let mesVista=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+let vista='semana';
+function renderAll(){ renderSemana(); renderPlan(); renderMes(); renderSueldos(); renderAjustesIfIdle(); renderKiosk(); }
+
+/* ---- tabs ---- */
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;vista=b.dataset.v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+vista));if(vista==='ajustes')renderAjustes(true);});
+
+/* ======================= SEMANA ======================= */
+$('wPrev').onclick=()=>{semana=addDays(semana,-7);renderSemana();};
+$('wNext').onclick=()=>{semana=addDays(semana,7);renderSemana();};
+$('wHoy').onclick=()=>{semana=monday(new Date());renderSemana();};
+
+function renderSemana(){
+  const dias=[...Array(7)].map((_,i)=>iso(addDays(semana,i)));
+  const keys=[...new Set(dias.map(mk))]; keys.forEach(k=>store.watchMes(k));
+  const a=fromIso(dias[0]),b=fromIso(dias[6]);
+  const wn=isoWeek(a);
+  $('wTitle').innerHTML=`${a.getDate()} ${MESES[a.getMonth()].slice(0,3)} – ${b.getDate()} ${MESES[b.getMonth()].slice(0,3)} ${b.getFullYear()}<small>Semana ${wn}</small>`;
+  const hoy=iso(new Date());
+  const emps=empActivos();
+  let h='<thead><tr><th class="emp">Empleado</th>';
+  for(const f of dias){const d=fromIso(f);const fest=esFestivo(f);
+    h+=`<th class="day ${fest?'festivo':''} ${f===hoy?'hoy':''}"><div class="dow">${DOWS[(d.getDay()+6)%7]}</div><div class="dn">${d.getDate()} ${fest?'<span class="fbadge">Festivo</span>':''}</div>${fest?`<div class="fname">${esc(config.feriados[f]||'')}</div>`:''}<button class="fest" data-f="${f}">${fest?'quitar festivo':'festivo'}</button></th>`;}
+  h+='<th class="tot">Semana</th></tr></thead><tbody>';
+  const cov={}; dias.forEach(f=>cov[f]={m:{cocina:0,camarero:0,dueno:0},n:{cocina:0,camarero:0,dueno:0}});
+  for(const e of emps){
+    h+=`<tr><td class="emp"><div class="name">${esc(e.nombre)}</div><span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td>`;
+    for(const f of dias){
+      h+=`<td class="day ${esFestivo(f)?'festivo':''} ${f===hoy?'hoy':''}">`;
+      for(const s of ['m','n']){
+        const en=getEntry(f,e.id,s); const on=!!en;
+        if(on) cov[f][s][e.rol]++;
+        const cls=['pill',on?'on':'',e.rol,en&&en.src==='fichaje'?(en.out?'fich':'abierto'):'',en&&en.src==='manual'?'manual':''].join(' ');
+        const hs=on?(en.src==='fichaje'?(en.out?fmtShort(realMin(en)):`${en.in} → …`):fmtShort(minutosDe(en,s))):`${config.turnos[s].ini}`;
+        h+=`<button class="${cls}" data-f="${f}" data-e="${e.id}" data-s="${s}" title="${config.turnos[s].nombre} ${config.turnos[s].ini}–${config.turnos[s].fin}"><span class="lab">${config.turnos[s].nombre}</span><span class="hs num">${hs}</span></button>`;
+      }
+      h+='</td>';
+    }
+    const r=resumen(e.id,dias);
+    h+=`<td class="tot"><div class="big num">${fmt(r.min)}</div><div class="sub">${r.m+r.n} turnos · ${r.dias} días</div>${r.fich?`<div class="real num">✓ ${fmt(r.real)} reales (${r.fich} fich.)</div>`:''}${r.festMin?`<div class="fest">${fmt(r.festMin)} en festivo</div>`:''}</td></tr>`;
+  }
+  if(!emps.length) h+=`<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Cargá los empleados en Ajustes.</td></tr>`;
+  h+='</tbody><tfoot><tr><td class="emp">Cobertura</td>';
+  for(const f of dias){h+='<td><div class="cov">';for(const s of ['m','n']){const c=cov[f][s];const z=c.cocina+c.camarero===0;h+=`<div><span class="k">${s==='m'?'M':'N'}</span>${z?'<span class="zero">sin nadie</span>':`<b class="c">${c.cocina} coc</b> · <b class="s">${c.camarero} cam</b>${c.dueno?` · <b class="d">${c.dueno} due</b>`:''}`}</div>`;}h+='</div></td>';}
+  const tot=emps.reduce((a,e)=>a+resumen(e.id,dias).min,0);
+  h+=`<td class="tot"><div class="sub">Total equipo</div><div class="big num" style="font-size:20px">${fmt(tot)}</div></td></tr></tfoot>`;
+  $('wGrid').innerHTML=h;
+}
+function isoWeek(d){const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-day);const y0=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil(((x-y0)/864e5+1)/7);}
+
+/* ---- interacción grilla ---- */
+let pressTimer=null, longPressed=false;
+$('wGrid').addEventListener('click',e=>{
+  const fb=e.target.closest('button.fest');
+  if(fb){const f=fb.dataset.f;if(esFestivo(f))delete config.feriados[f];else config.feriados[f]='';store.saveConfig();return;}
+  const p=e.target.closest('.pill'); if(!p||longPressed){longPressed=false;return;}
+  const {f,e:emp,s}=p.dataset; const en=getEntry(f,emp,s);
+  if(en&&en.src!=='plan'){ openPop(p); return; }
+  store.setTurno(f,emp,s,en?null:{src:'plan'});
+});
+$('wGrid').addEventListener('dblclick',e=>{const p=e.target.closest('.pill');if(p)openPop(p);});
+$('wGrid').addEventListener('pointerdown',e=>{const p=e.target.closest('.pill');if(!p)return;pressTimer=setTimeout(()=>{longPressed=true;openPop(p);},550);});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('wGrid').addEventListener(ev,()=>clearTimeout(pressTimer),true));
+$('wGrid').addEventListener('contextmenu',e=>{if(e.target.closest('.pill'))e.preventDefault();});
+
+/* ---- popover ---- */
+let popCtx=null;
+function openPop(p){
+  const {f,e:emp,s}=p.dataset; popCtx={f,emp,s};
+  const e=config.empleados.find(x=>x.id===emp); const en=getEntry(f,emp,s); const d=fromIso(f);
+  $('popTitle').textContent=`${e.nombre} · ${config.turnos[s].nombre}`;
+  $('popMeta').textContent=`${DOW[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}${esFestivo(f)?' · festivo':''} · turno de ${fmt(nominal(s))}`;
+  let fi='';
+  if(en&&en.src==='fichaje') fi=`<div class="fichinfo">Fichó entrada ${en.in}${en.out?` y salida ${en.out} · ${fmt(realMin(en))} reales`:' · todavía no fichó salida'}</div>`;
+  else if(en&&en.src==='manual') fi=`<div class="fichinfo" style="background:var(--surface-2);color:var(--ink-2)">Horas ajustadas a mano</div>`;
+  if(en&&(en.fin||en.fout)) fi+=`<div class="fotos">${en.fin?`<figure><img src="${fotoUrl(en.fin)}" alt="Foto entrada" data-id="${en.fin}" referrerpolicy="no-referrer">Entrada ${en.in||''}</figure>`:''}${en.fout?`<figure><img src="${fotoUrl(en.fout)}" alt="Foto salida" data-id="${en.fout}" referrerpolicy="no-referrer">Salida ${en.out||''}</figure>`:''}</div>`;
+  $('popFich').innerHTML=fi; cargarFotos($('popFich'));
+  $('popHoras').value=en?fmtShort(minutosDe(en,s)):fmtShort(nominal(s));
+  $('popDel').style.display=en?'':'none';
+  const pop=$('pop'); pop.classList.add('on');
+  const r=p.getBoundingClientRect(); let x=r.left, y=r.bottom+6;
+  if(x+270>innerWidth) x=innerWidth-270; if(y+260>innerHeight) y=r.top-260;
+  pop.style.left=Math.max(6,x)+'px'; pop.style.top=Math.max(6,y)+'px';
+  setTimeout(()=>$('popHoras').select(),30);
+}
+function closePop(){$('pop').classList.remove('on');popCtx=null;}
+$('popClose').onclick=closePop;
+$('popFich').addEventListener('click',e=>{const im=e.target.closest('img[data-id]');if(im&&im.src)fotoOpen(im.dataset.id,im.src);});
+$('fotoBig').addEventListener('click',()=>$('fotoBig').classList.remove('on'));
+$('popDel').onclick=()=>{if(popCtx)store.setTurno(popCtx.f,popCtx.emp,popCtx.s,null);closePop();};
+$('popOk').onclick=()=>{
+  if(!popCtx)return; const {f,emp,s}=popCtx; const min=parseHoras($('popHoras').value); const en=getEntry(f,emp,s);
+  if(min===null){closePop();return;}
+  if(en&&en.src==='fichaje'){ // conservar fichaje, sólo ajustar minutos
+    store.setTurno(f,emp,s,Object.assign({},en,{min,src:min===minutosDe(en,s)?'fichaje':'manual',in:en.in,out:en.out}));
+  } else store.setTurno(f,emp,s,min===nominal(s)?{src:'plan'}:{src:'manual',min});
+  closePop();
+};
+$('popHoras').addEventListener('keydown',e=>{if(e.key==='Enter')$('popOk').click();if(e.key==='Escape')closePop();});
+document.addEventListener('pointerdown',e=>{if($('pop').classList.contains('on')&&!e.target.closest('#pop')&&!e.target.closest('.pill'))closePop();});
+
+/* ======================= PLANIFICAR ======================= */
+let plDirty=false;
+$('pPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);renderPlan();renderMes();};
+$('pNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);renderPlan();renderMes();};
+$('pHoy').onclick=()=>{const n=new Date();mesVista=new Date(n.getFullYear(),n.getMonth(),1);renderPlan();renderMes();};
+function plantillaDe(id){const t=config.plantilla[id]||{};return {m:[...Array(7)].map((_,i)=>!!(t.m&&t.m[i])),n:[...Array(7)].map((_,i)=>!!(t.n&&t.n[i]))};}
+function renderPlantilla(){
+  const emps=empActivos();
+  let h='<thead><tr><th>Empleado</th>'+DOWS.map(d=>`<th>${d}</th>`).join('')+'<th>Horas/sem</th></tr></thead><tbody>';
+  for(const e of emps){const t=plantillaDe(e.id);let min=0;
+    h+=`<tr><td>${esc(e.nombre)} <span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td>`;
+    for(let i=0;i<7;i++){h+='<td><div class="tcell">';for(const s of ['m','n']){const on=t[s][i];if(on)min+=nominal(s);h+=`<button class="mini ${on?'on':''} ${e.rol}" data-e="${e.id}" data-s="${s}" data-i="${i}" title="${config.turnos[s].nombre}">${s.toUpperCase()}</button>`;}h+='</div></td>';}
+    h+=`<td class="num" style="font-weight:700">${fmt(min)}</td></tr>`;}
+  h+='</tbody>';
+  $('plTbl').innerHTML=h;
+}
+$('plTbl').addEventListener('click',e=>{const b=e.target.closest('.mini');if(!b)return;const {e:id,s,i}=b.dataset;const t=plantillaDe(id);t[s][+i]=!t[s][+i];config.plantilla[id]=t;plDirty=true;renderPlantilla();$('plMsg').textContent='Sin guardar';});
+$('plSave').onclick=async()=>{await store.saveConfig();plDirty=false;$('plMsg').textContent='Horario habitual guardado ✓';setTimeout(()=>$('plMsg').textContent='',2500);};
+$('plApply').onclick=async()=>{
+  const dias=diasMes(mesVista),key=mk(dias[0]);const changes={};let n=0;
+  for(const e of empActivos()){const t=plantillaDe(e.id);for(const f of dias){const i=(fromIso(f).getDay()+6)%7;for(const s of ['m','n']){if(t[s][i]&&!getEntry(f,e.id,s)){((changes[f]=changes[f]||{})[e.id]=changes[f][e.id]||{})[s]={src:'plan'};n++;}}}}
+  if(plDirty){await store.saveConfig();plDirty=false;}
+  if(!n){$('plMsg').textContent='No había nada nuevo para agregar';setTimeout(()=>$('plMsg').textContent='',2500);return;}
+  await store.setTurnosBatch(key,changes);
+  $('plMsg').textContent=`${n} turnos agregados a ${MESES[mesVista.getMonth()]} ✓`;setTimeout(()=>$('plMsg').textContent='',3000);
+};
+$('plClear').onclick=async()=>{
+  const dias=diasMes(mesVista),key=mk(dias[0]);const changes={};let n=0;
+  for(const e of empActivos())for(const f of dias)for(const s of ['m','n']){const en=getEntry(f,e.id,s);if(en&&en.src==='plan'){((changes[f]=changes[f]||{})[e.id]=changes[f][e.id]||{})[s]=null;n++;}}
+  if(!n){$('plMsg').textContent='No hay turnos planificados en este mes';setTimeout(()=>$('plMsg').textContent='',2500);return;}
+  if(!confirm(`Se van a quitar ${n} turnos planificados de ${MESES[mesVista.getMonth()]}. Los fichados y los ajustados a mano quedan. ¿Seguir?`))return;
+  await store.setTurnosBatch(key,changes);
+  $('plMsg').textContent=`${n} turnos quitados`;setTimeout(()=>$('plMsg').textContent='',2500);
+};
+function renderPlan(){
+  const dias=diasMes(mesVista);const key=mk(dias[0]);store.watchMes(key);
+  $('pTitle').innerHTML=`${MESES[mesVista.getMonth()]} ${mesVista.getFullYear()}<small>planificación</small>`;
+  renderPlantilla();
+  const hoy=iso(new Date());const emps=empActivos();
+  let h='<thead><tr><th class="emp">Empleado</th>';
+  for(const f of dias){const d=fromIso(f);const w=(d.getDay()+6)%7;h+=`<th class="d ${esFestivo(f)?'festivo':''} ${w>=5?'fin':''} ${f===hoy?'hoy':''}"><div class="dow">${DOWS[w].slice(0,1)}</div><div class="dn">${d.getDate()}</div></th>`;}
+  h+='<th class="tot">Mes</th></tr></thead><tbody>';
+  const cov={};dias.forEach(f=>cov[f]={m:0,n:0});
+  for(const e of emps){
+    h+=`<tr><td class="emp"><div class="name">${esc(e.nombre)}</div><span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td>`;
+    for(const f of dias){h+=`<td class="d ${esFestivo(f)?'festivo':''}">`;
+      for(const s of ['m','n']){const en=getEntry(f,e.id,s);if(en)cov[f][s]++;const fich=en&&en.src==='fichaje';
+        h+=`<button class="mini ${en?'on':''} ${e.rol} ${fich?(en.out?'fich':'abierto'):''}" data-f="${f}" data-e="${e.id}" data-s="${s}" title="${config.turnos[s].nombre} ${f}${fich?' · fichado':''}">${s.toUpperCase()}</button>`;}
+      h+='</td>';}
+    const r=resumen(e.id,dias);
+    h+=`<td class="tot"><div class="big num" style="font-family:var(--display);font-size:22px;line-height:1">${fmt(r.min)}</div><div class="sub" style="font-size:11px;color:var(--muted)">${r.m+r.n} turnos</div></td></tr>`;
+  }
+  if(!emps.length)h+=`<tr><td colspan="33" style="padding:30px;text-align:center;color:var(--muted)">Cargá los empleados en Ajustes.</td></tr>`;
+  h+='</tbody><tfoot><tr><td class="emp">Personas</td>';
+  for(const f of dias){h+=`<td><div class="${cov[f].m?'':'zero'}">${cov[f].m}</div><div class="${cov[f].n?'':'zero'}">${cov[f].n}</div></td>`;}
+  h+=`<td class="tot" style="font-size:11px;color:var(--muted)">M arriba<br>N abajo</td></tr></tfoot>`;
+  $('pGrid').innerHTML=h;
+}
+$('pGrid').addEventListener('click',e=>{const b=e.target.closest('.mini');if(!b)return;const {f,e:id,s}=b.dataset;const en=getEntry(f,id,s);if(en&&en.src==='fichaje')return;store.setTurno(f,id,s,en?null:{src:'plan'});});
+
+/* ======================= MES ======================= */
+$('mPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);renderMes();};
+$('mNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);renderMes();};
+$('mHoy').onclick=()=>{const n=new Date();mesVista=new Date(n.getFullYear(),n.getMonth(),1);renderMes();};
+function diasMes(d){const y=d.getFullYear(),m=d.getMonth();const n=new Date(y,m+1,0).getDate();return [...Array(n)].map((_,i)=>iso(new Date(y,m,i+1)));}
+function renderMes(){
+  const dias=diasMes(mesVista); const key=mk(dias[0]); store.watchMes(key);
+  $('mTitle').innerHTML=`${MESES[mesVista.getMonth()]} ${mesVista.getFullYear()}<small>${dias.length} días</small>`;
+  const emps=empActivos();
+  // semanas del mes (bloques lun-dom que tocan el mes, recortados al mes)
+  const sems=[]; let cur=monday(fromIso(dias[0])); const fin=fromIso(dias[dias.length-1]);
+  while(cur<=fin){const ds=[...Array(7)].map((_,i)=>iso(addDays(cur,i))).filter(f=>mk(f)===key);sems.push(ds);cur=addDays(cur,7);}
+  const rows=emps.map(e=>({e,r:resumen(e.id,dias),sem:sems.map(ds=>resumen(e.id,ds).min)}));
+  const totMin=rows.reduce((a,x)=>a+x.r.min,0), totFest=rows.reduce((a,x)=>a+x.r.festMin,0), totTurnos=rows.reduce((a,x)=>a+x.r.m+x.r.n,0);
+  const coc=rows.filter(x=>x.e.rol==='cocina').reduce((a,x)=>a+x.r.min,0), cam=rows.filter(x=>x.e.rol==='camarero').reduce((a,x)=>a+x.r.min,0), due=rows.filter(x=>x.e.rol==='dueno').reduce((a,x)=>a+x.r.min,0);
+  const totReal=rows.reduce((a,x)=>a+x.r.real,0), totFich=rows.reduce((a,x)=>a+x.r.fich,0);
+  const festMes=dias.filter(esFestivo);
+  $('mCards').innerHTML=`
+    <div class="card"><div class="k">Horas del equipo</div><div class="v num">${fmt(totMin)}</div><div class="s">${totTurnos} turnos en el mes</div></div>
+    <div class="card"><div class="k">Cocina</div><div class="v num" style="color:var(--cocina)">${fmt(coc)}</div><div class="s">${rows.filter(x=>x.e.rol==='cocina').length} personas</div></div>
+    <div class="card"><div class="k">Camareros</div><div class="v num" style="color:var(--camarero)">${fmt(cam)}</div><div class="s">${rows.filter(x=>x.e.rol==='camarero').length} personas</div></div>
+    ${rows.some(x=>x.e.rol==='dueno')?`<div class="card"><div class="k">Dueño</div><div class="v num" style="color:var(--dueno)">${fmt(due)}</div><div class="s">${rows.filter(x=>x.e.rol==='dueno').length} persona${rows.filter(x=>x.e.rol==='dueno').length===1?'':'s'}</div></div>`:''}
+    <div class="card"><div class="k">Horas reales fichadas</div><div class="v num" style="color:var(--ok)">${fmt(totReal)}</div><div class="s">${totFich} turnos con entrada y salida</div></div>
+    <div class="card fest"><div class="k">En festivos</div><div class="v num">${fmt(totFest)}</div><div class="s">${festMes.length} festivo${festMes.length===1?'':'s'} este mes</div></div>`;
+  const maxSem=Math.max(1,...rows.flatMap(x=>x.sem));
+  let h=`<thead><tr><th>Empleado</th><th>Mañanas</th><th>Noches</th><th>Días</th><th>Horas</th><th>Reales fichadas</th><th>En festivo</th><th>Por semana</th></tr></thead><tbody>`;
+  for(const x of rows){
+    h+=`<tr><td><b>${esc(x.e.nombre)}</b> <span class="rol ${x.e.rol}">${rolLabel(x.e.rol)}</span></td><td class="num">${x.r.m}</td><td class="num">${x.r.n}</td><td class="num">${x.r.dias}</td><td class="h num">${fmt(x.r.min)}</td><td class="rh num">${x.r.fich?`${fmt(x.r.real)} <small>(${x.r.fich} turnos)</small>`:'—'}</td><td class="fh num">${x.r.festMin?fmt(x.r.festMin):'—'}</td><td><div class="wk">${x.sem.map((m,i)=>`<i class="${rolCls(x.e.rol)}" style="height:${Math.max(2,Math.round(26*m/maxSem))}px" title="Semana ${i+1}: ${fmt(m)}"></i>`).join('')}</div></td></tr>`;
+  }
+  h+=`</tbody><tfoot><tr><td>Total</td><td class="num">${rows.reduce((a,x)=>a+x.r.m,0)}</td><td class="num">${rows.reduce((a,x)=>a+x.r.n,0)}</td><td></td><td class="num">${fmt(totMin)}</td><td class="num">${fmt(totReal)}</td><td class="num">${fmt(totFest)}</td><td></td></tr></tfoot>`;
+  $('mTbl').innerHTML=h;
+  $('mFest').innerHTML=festMes.length?`<b>Festivos del mes:</b> ${festMes.map(f=>`${fromIso(f).getDate()} ${config.feriados[f]?`(${esc(config.feriados[f])})`:''}`).join(', ')}`:'Este mes no tiene festivos marcados. Se marcan desde la grilla semanal o en Ajustes.';
+}
+$('btnCsv').onclick=async()=>{
+  if(!downloads)return; const dias=diasMes(mesVista); const emps=empActivos();
+  const lines=[['Empleado','Rol','Fecha','Turno','Origen','Entrada','Salida','Minutos contados','Minutos reales','Festivo']];
+  for(const e of emps)for(const f of dias)for(const s of ['m','n']){const en=getEntry(f,e.id,s);if(!en)continue;lines.push([e.nombre,rolLabel(e.rol),f,config.turnos[s].nombre,en.src,en.in||'',en.out||'',minutosDe(en,s),en.out?realMin(en):'',esFestivo(f)?'si':'no']);}
+  lines.push([]);lines.push(['Resumen']);lines.push(['Empleado','Rol','Mañanas','Noches','Días','Horas','Horas reales fichadas','Turnos fichados','Horas festivo']);
+  for(const e of emps){const r=resumen(e.id,dias);lines.push([e.nombre,rolLabel(e.rol),r.m,r.n,r.dias,(r.min/60).toFixed(2),(r.real/60).toFixed(2),r.fich,(r.festMin/60).toFixed(2)]);}
+  const csv=lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  try{await downloads.save({filename:`horarios-${mk(dias[0])}.csv`,data:'﻿'+csv});}catch(e){}
+};
+
+/* ======================= SUELDOS ======================= */
+$('sPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);renderAll();};
+$('sNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);renderAll();};
+$('sHoy').onclick=()=>{const n=new Date();mesVista=new Date(n.getFullYear(),n.getMonth(),1);renderAll();};
+let sTimer=null;
+function sMsg(t){$('sMsg').textContent=t;clearTimeout(sTimer);sTimer=setTimeout(()=>$('sMsg').textContent='',2000);}
+function renderSueldos(){
+  const sec=$('v-sueldos'); if(sec.contains(document.activeElement)&&document.activeElement.tagName!=='BODY') return; // no pisar lo que está escribiendo
+  const dias=diasMes(mesVista),key=mk(dias[0]); store.watchMes(key);
+  $('sTitle').innerHTML=`${MESES[mesVista.getMonth()]} ${mesVista.getFullYear()}<small>sueldos</small>`;
+  $('sBase').value=config.pagos.base||'turno'; $('sRec').value=String(config.pagos.recargo||0).replace('.',',');
+  const emps=empActivos(); const rows=emps.map(e=>({e,c:calcPago(e,dias,key)}));
+  const tot=rows.reduce((a,x)=>a+x.c.total,0), totH=rows.reduce((a,x)=>a+x.c.h,0), totFest=rows.reduce((a,x)=>a+x.c.plusFest,0), totExtra=rows.reduce((a,x)=>a+(x.c.aj.extra||0),0);
+  $('sCards').innerHTML=`
+    <div class="card"><div class="k">Total a pagar</div><div class="v num">${fmtEur(tot)}</div><div class="s">${emps.length} personas</div></div>
+    <div class="card"><div class="k">Horas pagadas</div><div class="v num">${fmt(totH*60)}</div><div class="s">${totH>0?fmtEur(tot/totH)+' por hora en promedio':'—'}</div></div>
+    <div class="card fest"><div class="k">Plus por festivos</div><div class="v num">${fmtEur(totFest)}</div><div class="s">recargo del ${numOf(config.pagos.recargo)||0} %</div></div>
+    <div class="card"><div class="k">Extras y adelantos</div><div class="v num" style="color:${totExtra<0?'var(--danger)':'var(--ok)'}">${fmtEur(totExtra)}</div><div class="s">suma de la columna Extra</div></div>`;
+  let h=`<thead><tr><th>Empleado</th><th>Modo</th><th>€ / hora · sueldo</th><th>Horas del mes</th><th>Ajuste horas</th><th>Horas a pagar</th><th>Festivo</th><th>Extra €</th><th>Total</th></tr></thead><tbody>`;
+  for(const {e,c} of rows){
+    const men=c.p.modo==='mensual';
+    h+=`<tr data-e="${e.id}"><td class="emp-cell"><b>${esc(e.nombre)}</b> <span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td>
+      <td><select class="ps" data-k="modo"><option value="hora" ${men?'':'selected'}>Por hora</option><option value="mensual" ${men?'selected':''}>Sueldo mensual</option></select></td>
+      <td><input class="pi" inputmode="decimal" data-k="${men?'sueldo':'tarifa'}" value="${men?c.p.sueldo||'':c.p.tarifa||''}" placeholder="${men?'€ al mes':'€ / h'}">${men?`<span class="eq">${c.h>0?`sale a ${fmtEur(c.tarifaEq)} la hora`:'sin horas cargadas'}</span>`:''}</td>
+      <td class="num dim">${fmt(c.r.min)}</td>
+      <td><input class="pi ${c.aj.min<0?'neg':''}" inputmode="decimal" data-k="ajmin" value="${c.aj.min?String(Math.round(c.aj.min/6)/10).replace('.',','):''}" placeholder="± h"></td>
+      <td class="num"><b>${fmt(c.minPagar)}</b></td>
+      <td class="fh num">${c.r.festMin?`${fmt(c.r.festMin)}${c.plusFest?`<span class="eq">+${fmtEur(c.plusFest)}</span>`:''}`:'—'}</td>
+      <td><input class="pi ${c.aj.extra<0?'neg':''}" inputmode="decimal" data-k="extra" value="${c.aj.extra?String(c.aj.extra).replace('.',','):''}" placeholder="± €"></td>
+      <td class="eur num">${fmtEur(c.total)}${men?`<span class="eq">sueldo ${fmtEur(c.base)}</span>`:`<span class="eq">${fmt(c.minPagar)} × ${fmtEur(c.tarifaEq)}</span>`}</td></tr>`;
+  }
+  if(!emps.length) h+=`<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Cargá los empleados en Ajustes.</td></tr>`;
+  h+=`</tbody><tfoot><tr><td>Total</td><td></td><td></td><td class="num">${fmt(rows.reduce((a,x)=>a+x.c.r.min,0))}</td><td></td><td class="num">${fmt(totH*60)}</td><td class="num">${fmtEur(totFest)}</td><td class="num">${fmtEur(totExtra)}</td><td class="eur num">${fmtEur(tot)}</td></tr></tfoot>`;
+  $('sTbl').innerHTML=h;
+}
+$('sBase').addEventListener('change',async()=>{config.pagos.base=$('sBase').value;$('sBase').blur();await store.saveConfig();sMsg('Guardado ✓');renderSueldos();});
+$('sRec').addEventListener('change',async()=>{config.pagos.recargo=numOf($('sRec').value);$('sRec').blur();await store.saveConfig();sMsg('Guardado ✓');renderSueldos();});
+$('sTbl').addEventListener('change',async e=>{
+  const inp=e.target.closest('[data-k]'); if(!inp) return; const tr=inp.closest('tr'); const id=tr.dataset.e; const k=inp.dataset.k; const key=mk(iso(mesVista));
+  if(k==='ajmin'||k==='extra'){ const v=numOf(inp.value); inp.blur(); await store.setAjuste(key,id,k==='ajmin'?{min:Math.round(v*60)}:{extra:v}); }
+  else { config.pagos.emp=config.pagos.emp||{}; const p=pagoDe(id); if(k==='modo') p.modo=inp.value; else p[k]=numOf(inp.value); config.pagos.emp[id]=p; inp.blur(); await store.saveConfig(); }
+  sMsg('Guardado ✓'); renderSueldos();
+});
+$('sTbl').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input'))e.target.blur();});
+$('btnCsvS').onclick=async()=>{
+  if(!downloads)return; const dias=diasMes(mesVista),key=mk(dias[0]);
+  const lines=[['Empleado','Rol','Modo','Tarifa €/h','Sueldo €','Horas del mes','Ajuste horas','Horas a pagar','Horas festivo','Plus festivo €','Extra €','Total €']];
+  for(const e of empActivos()){const c=calcPago(e,dias,key);lines.push([e.nombre,rolLabel(e.rol),c.p.modo,c.p.modo==='hora'?c.tarifaEq:'',c.p.modo==='mensual'?c.p.sueldo:'',(c.r.min/60).toFixed(2),((c.aj.min||0)/60).toFixed(2),c.h.toFixed(2),c.hf.toFixed(2),c.plusFest.toFixed(2),(c.aj.extra||0).toFixed(2),c.total.toFixed(2)]);}
+  const csv=lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  try{await downloads.save({filename:`sueldos-${key}.csv`,data:'\ufeff'+csv});}catch(e){}
+};
+
+/* ======================= AJUSTES ======================= */
+let ajustesDirty=false, ajustesRendered=false;
+function renderAjustesIfIdle(){ if(vista==='ajustes'&&!ajustesDirty) renderAjustes(true); }
+function renderAjustes(force){
+  if(ajustesRendered&&!force)return; ajustesRendered=true;
+  $('empList').innerHTML=config.empleados.map((e,i)=>`<div class="emprow ${e.nombre?'':'off'}" data-i="${i}"><span class="idx">${i+1}</span><input type="text" placeholder="Lugar libre" value="${esc(e.nombre)}" data-k="nombre"><select data-k="rol">${Object.keys(ROLES).map(k=>`<option value="${k}" ${e.rol===k?'selected':''}>${ROLES[k].label}</option>`).join('')}</select><input type="text" class="pin" inputmode="numeric" maxlength="6" placeholder="PIN" value="${esc(e.pin)}" data-k="pin"><label class="tog"><input type="checkbox" ${e.activo?'checked':''} data-k="activo">activo</label></div>`).join('');
+  renderFestList();
+  $('tMi').value=config.turnos.m.ini;$('tMf').value=config.turnos.m.fin;$('tNi').value=config.turnos.n.ini;$('tNf').value=config.turnos.n.fin;
+  $('cReal').checked=config.contarReales; $('cFoto').checked=config.fotos; $('pinAdmin').value=config.pinAdmin; updDur();
+}
+function renderFestList(){
+  const ks=Object.keys(config.feriados).sort();
+  $('festList').innerHTML=ks.length?ks.map(f=>{const d=fromIso(f);return `<div class="fest-item"><span><b class="num">${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}</b> ${esc(config.feriados[f])}</span><button class="x" data-f="${f}" title="Quitar">✕</button></div>`;}).join(''):'<p style="color:var(--muted)">Sin festivos cargados.</p>';
+}
+function updDur(){const d=(a,b)=>{let x=hm2min(b)-hm2min(a);if(x<0)x+=1440;return fmt(x);};$('tMd').textContent=d($('tMi').value,$('tMf').value);$('tNd').textContent=d($('tNi').value,$('tNf').value);}
+['tMi','tMf','tNi','tNf'].forEach(id=>$(id).addEventListener('input',()=>{ajustesDirty=true;updDur();}));
+$('v-ajustes').addEventListener('input',e=>{ajustesDirty=true;$('saveMsg').textContent='';});
+$('fAdd').onclick=()=>{const f=$('fDate').value;if(!f)return;config.feriados[f]=$('fName').value.trim();$('fDate').value='';$('fName').value='';renderFestList();ajustesDirty=true;};
+$('festList').addEventListener('click',e=>{const b=e.target.closest('.x');if(!b)return;delete config.feriados[b.dataset.f];renderFestList();ajustesDirty=true;});
+$('btnSave').onclick=async()=>{
+  document.querySelectorAll('#empList .emprow').forEach(row=>{const e=config.empleados[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{e[inp.dataset.k]=inp.type==='checkbox'?inp.checked:inp.value.trim();});});
+  config.turnos.m.ini=$('tMi').value||'12:00';config.turnos.m.fin=$('tMf').value||'13:50';config.turnos.n.ini=$('tNi').value||'19:30';config.turnos.n.fin=$('tNf').value||'23:30';
+  config.contarReales=$('cReal').checked; config.fotos=$('cFoto').checked; config.pinAdmin=$('pinAdmin').value.trim()||'1234';
+  await store.saveConfig(); ajustesDirty=false; renderAjustes(true); $('saveMsg').textContent='Guardado ✓'; setTimeout(()=>$('saveMsg').textContent='',2500);
+};
+
+/* ======================= KIOSK / FICHAJE ======================= */
+let kiosk=false, kSel=null, kPin='', kStep=null;
+function turnoActual(){ // qué turno corresponde según la hora
+  const now=hm2min(nowHM()); const mIni=hm2min(config.turnos.m.ini), mFin=hm2min(config.turnos.m.fin), nIni=hm2min(config.turnos.n.ini);
+  const corte=Math.round((mFin+nIni)/2);
+  return now<corte?'m':'n';
+}
+function setKiosk(on){
+  kiosk=on; $('kiosk').classList.toggle('on',on); document.body.style.overflow=on?'hidden':''; if(!on) stopCam();
+  clearInterval(kioskPoll); if(on&&mode==='sb'){ kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
+  try{ if(on) localStorage.setItem('terrys-kiosk','1'); else localStorage.removeItem('terrys-kiosk'); }catch(e){}
+  if(on){ kSel=null; kStep=null; $('kModal').classList.remove('on'); renderKiosk(); }
+}
+$('btnKiosk').onclick=()=>setKiosk(true);
+$('kExit').onclick=()=>{ kStep='admin'; kPin=''; kSel=null; renderKModal(); };
+function tickClock(){const d=new Date();$('kClock').textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}`;$('kDate').textContent=`${DOW[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}`;const s=turnoActual();$('kTurno').textContent=`Turno ${config.turnos[s].nombre.toLowerCase()} · ${config.turnos[s].ini}–${config.turnos[s].fin}${esFestivo(iso(d))?' · festivo':''}`;}
+setInterval(tickClock,10000);
+function renderKiosk(){
+  if(!kiosk)return; tickClock();
+  const hoy=iso(new Date()); store.watchMes(mk(hoy)); const s=turnoActual();
+  $('kGrid').innerHTML=empActivos().filter(e=>e.activo).map(e=>{
+    const en=getEntry(hoy,e.id,s); const dentro=en&&en.src==='fichaje'&&!en.out; const hecho=en&&en.src==='fichaje'&&en.out;
+    return `<button class="k-emp ${dentro?'dentro':''}" data-e="${e.id}"><span class="n">${esc(e.nombre)}</span><span class="r ${e.rol}">${rolLabel(e.rol)}</span>${hecho?`<span class="hecho">✓ ${en.in}–${en.out}</span>`:''}<span class="st">${dentro?`Dentro desde ${en.in}`:hecho?'Turno fichado':'Tocá para fichar'}</span></button>`;
+  }).join('')||'<p style="opacity:.7">No hay empleados activos. Cargalos en Ajustes.</p>';
+}
+let kPinVerified='';
+$('kGrid').addEventListener('click',e=>{const b=e.target.closest('.k-emp');if(!b)return;kSel=config.empleados.find(x=>x.id===b.dataset.e);kPin='';kPinVerified='';const pide=mode==='sb'?(kSel.pinLen||0)>0:!!kSel.pin;kStep=pide?'pin':'accion';renderKModal();});
+let camStream=null;
+async function startCam(){
+  const v=$('kVid'), st=$('kCamSt'); if(!v) return;
+  if(!config.fotos){ $('kCam').hidden=true; return; }
+  if(mode==='db'&&!assets){ st.textContent='Sin foto: no hay dónde guardarla'; return; }
+  if(mode==='local'){ st.textContent='Sin foto: la página no está conectada'; return; }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ st.textContent='Sin cámara en este dispositivo'; return; }
+  try{
+    if(!camStream) camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    v.srcObject=camStream; st.textContent='Mirá a la cámara';
+  }catch(e){ st.textContent='Sin acceso a la cámara · se ficha sin foto'; camStream=null; }
+}
+function stopCam(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
+async function capturarBlob(){
+  const v=$('kVid'); if(!v||!camStream||!v.videoWidth) return null;
+  try{ const c=document.createElement('canvas'); c.width=320; c.height=240; c.getContext('2d').drawImage(v,0,0,320,240); return await new Promise(r=>c.toBlob(r,'image/jpeg',0.72)); }catch(e){ return null; }
+}
+async function capturarFoto(){ // devuelve id (modo db) o base64 (modo Supabase)
+  if(!config.fotos) return null;
+  const blob=await capturarBlob(); if(!blob) return null;
+  try{
+    if(mode==='db'&&assets){ const res=await assets.upload(blob,{type:'image/jpeg'}); return res.id; }
+    if(mode==='sb'){ const du=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);}); return String(du).split(',')[1]||null; }
+  }catch(e){ console.error('foto',e); }
+  return null;
+}
+function closeKModal(){ $('kModal').classList.remove('on'); kSel=null; kStep=null; stopCam(); }
+function renderKModal(){
+  const box=$('kBox'); $('kModal').classList.add('on');
+  if(kStep==='pin'||kStep==='admin'){
+    const who=kStep==='admin'?'PIN del dueño':esc(kSel.nombre);
+    const len=Math.max(4,kNeed());
+    box.innerHTML=`<h2>${who}</h2><div class="sub">${kStep==='admin'?'Para salir del modo fichaje':'Ingresá tu PIN'}</div><div class="pinshow">${[...Array(len)].map((_,i)=>`<i class="${i<kPin.length?'f':''}"></i>`).join('')}</div>${padHtml()}<div class="k-err" id="kErr"></div>`;
+  }else if(kStep==='accion'){
+    const hoy=iso(new Date()), s=turnoActual(); const en=getEntry(hoy,kSel.id,s); const dentro=en&&en.src==='fichaje'&&!en.out;
+    box.innerHTML=`<h2>Hola, ${esc(kSel.nombre)}</h2><div class="sub">${config.turnos[s].nombre} · ${nowHM()}${dentro?` · entraste ${en.in}`:''}</div><div class="cam" id="kCam"><video id="kVid" autoplay playsinline muted></video><span class="camst" id="kCamSt">Abriendo cámara…</span></div><div class="k-act">${dentro?`<button class="big out" id="kGo">Fichar salida</button>`:`<button class="big" id="kGo">Fichar entrada</button>`}<button class="ghost" id="kCancel">Cancelar</button></div>`;
+    $('kGo').onclick=()=>fichar(dentro?'out':'in');
+    $('kCancel').onclick=closeKModal;
+    startCam();
+  }else if(kStep==='ok'){
+    box.innerHTML=`<h2>Listo, ${esc(kSel.nombre)}</h2><div class="k-done" id="kOkMsg"></div><div class="sub" id="kOkFoto"></div>`;
+  }
+}
+function kNeed(){ if(mode==='sb') return kStep==='admin'?(kioskMeta.adminPinLen||4):(kSel&&kSel.pinLen||4); const ex=kStep==='admin'?config.pinAdmin:(kSel&&kSel.pin||''); return ex.length; }
+let kVerificando=false;
+$('kBox').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-n]'); if(!b||kVerificando)return; const n=b.dataset.n;
+  if(n==='x'){closeKModal();return;}
+  if(n==='del'){kPin=kPin.slice(0,-1);renderKModal();return;}
+  kPin+=n; renderKModal();
+  if(kPin.length<kNeed()) return;
+  if(mode==='sb'){
+    kVerificando=true; $('kErr').textContent='Verificando…';
+    let ok=false; try{ const d=await sb(kStep==='admin'?'pinAdmin':'pin',{pin:kPin,emp:kSel?kSel.id:''}); ok=!!d.ok; }catch(err){ $('kErr').textContent='Sin conexión: '+err.message; kVerificando=false; kPin=''; return; }
+    kVerificando=false;
+    if(ok){ if(kStep==='admin'){ adminPin=kPin; closeKModal(); setKiosk(false); sbLoad().catch(err=>showLock('No se pudo cargar: '+err.message)); } else { kPinVerified=kPin; kStep='accion'; renderKModal(); } }
+    else { kPin=''; renderKModal(); $('kErr').textContent='PIN incorrecto'; }
+    return;
+  }
+  const expected=kStep==='admin'?config.pinAdmin:kSel.pin;
+  if(kPin===expected){ if(kStep==='admin'){closeKModal();setKiosk(false);} else {kStep='accion';renderKModal();} }
+  else { kPin=''; setTimeout(()=>{renderKModal();$('kErr').textContent='PIN incorrecto';},80); }
+});
+let fichando=false;
+async function fichar(tipo){
+  if(fichando) return; fichando=true;
+  const go=$('kGo'); if(go){go.disabled=true;go.textContent='Guardando…';}
+  const hoy=iso(new Date()), s=turnoActual(), t=nowHM(); const en=getEntry(hoy,kSel.id,s);
+  const quien=kSel;
+  const foto=await capturarFoto(); stopCam();
+  kStep='ok'; renderKModal();
+  if(mode==='sb'){
+    $('kOkMsg').textContent='Guardando…';
+    try{
+      const d=await sb('fichar',{emp:quien.id,pin:kPinVerified||'',tipo,fecha:hoy,shift:s,hora:t,foto:foto||null});
+      const entry=normEntry(d.entry); const m=meses[mk(hoy)]=meses[mk(hoy)]||{turnos:{},ajustes:{}}; ((m.turnos[hoy]=m.turnos[hoy]||{})[quien.id]=m.turnos[hoy][quien.id]||{})[s]=entry;
+      $('kOkMsg').textContent=tipo==='in'?`Entrada ${t} · ${config.turnos[s].nombre}`:`Salida ${t} · ${fmt(realMin(entry))} trabajadas`;
+      $('kOkFoto').textContent=(tipo==='in'?entry.fin:entry.fout)?'Foto guardada ✓':(config.fotos?'Sin foto':'');
+      renderKiosk();
+    }catch(e){ $('kOkMsg').textContent='No se pudo guardar'; $('kOkFoto').textContent=e.message; fichando=false; setTimeout(()=>{ if(kStep==='ok') closeKModal(); },3500); return; }
+    fichando=false; setTimeout(()=>{ if(kStep==='ok') closeKModal(); },2200); return;
+  }
+  let entry;
+  if(tipo==='in') entry={src:'fichaje',in:t,fin:foto||undefined};
+  else { let min=hm2min(t)-hm2min(en.in); if(min<0)min+=1440; entry=Object.assign({},en,{src:'fichaje',in:en.in,out:t,min,fout:foto||undefined}); }
+  $('kOkMsg').textContent=tipo==='in'?`Entrada ${t} · ${config.turnos[s].nombre}`:`Salida ${t} · ${fmt(entry.min)} trabajadas`;
+  $('kOkFoto').textContent=foto?'Foto guardada ✓':(config.fotos?'Sin foto':'');
+  await store.setTurno(hoy,quien.id,s,entry);
+  fichando=false;
+  setTimeout(()=>{ if(kStep==='ok') closeKModal(); },2200);
+}
+
+/* ======================= arranque ======================= */
+renderAll();
+store.init().then(()=>{ try{ if(mode!=='sb'&&localStorage.getItem('terrys-kiosk')==='1') setKiosk(true); }catch(e){} });
+</script>
