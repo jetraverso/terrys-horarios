@@ -242,7 +242,8 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .log-item .ts{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .log-item .who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .log-item .what{color:var(--ink-2)}
-.duenorow{display:grid;grid-template-columns:24px 1fr 90px;gap:8px;align-items:center;margin-bottom:8px}
+.duenorow{display:grid;grid-template-columns:24px minmax(0,1fr) 120px;gap:8px;align-items:center;margin-bottom:8px}
+.duenorow input,.duenorow input.pin{width:100%;min-width:0}
 .duenorow .idx{font-family:var(--display);font-size:18px;color:var(--muted)}
 .sesion{font-size:12px;opacity:.75}
 
