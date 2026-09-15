@@ -537,7 +537,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
       <div class="k-date" id="kDate"></div>
       <div class="k-turno" id="kTurno"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><button class="k-exit" id="kExit">Administración</button><button class="k-exit" id="kSound" type="button">🔕 Tocá para activar el sonido</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><button class="k-exit" id="kExit">Administración</button><button class="k-exit" id="kSound" type="button">🔕 Tocá para activar el sonido</button><span class="sesion" id="kVer"></span></div>
   </div>
   <div class="k-alarma" id="kAlarma"><div><div class="t" id="kAlT"></div><div class="q" id="kAlQ"></div></div><button id="kAlOk" type="button">Entendido</button></div>
   <div class="k-grid" id="kGrid"></div>
@@ -552,6 +552,7 @@ window.addEventListener('error',function(ev){ try{ var el=document.getElementByI
 const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const APP_VERSION='2026-09-15b';
 const clon=o=>JSON.parse(JSON.stringify(o));
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -755,6 +756,7 @@ function showAuth(msg){
     <label>PIN del dueño</label><input type="password" class="pin" id="authPin" inputmode="numeric" autocomplete="off" maxlength="8">
     <button class="btn primary" type="submit" style="padding:12px;font-size:16px">Autorizar este dispositivo</button></form>
     <div class="k-err" id="lockErr">${esc(msg||'')}</div>
+    <div class="sesion" style="color:var(--muted)">versión ${APP_VERSION}</div>
     <div class="lock-links">${sbCfg()&&sbCfg().fija?'':'<button type="button" id="lockOff">Cambiar conexión</button>'}</div>`;
   const off=$('lockOff'); if(off) off.onclick=()=>{ if(confirm('¿Desconectar esta página de Supabase?')){ try{localStorage.removeItem('terrys-sb');}catch(e){} location.reload(); } };
   $('authForm').onsubmit=async e=>{
@@ -1233,6 +1235,7 @@ setInterval(tickClock,10000);
 function renderKiosk(){
   if(!kiosk)return; tickClock();
   const hoy=iso(new Date()); store.watchMes(mk(hoy)); const s=turnoActual();
+  $('kVer').textContent='versión '+APP_VERSION;
   $('kGrid').innerHTML=empActivos().filter(e=>e.activo).map(e=>{
     const en=getEntry(hoy,e.id,s); const dentro=en&&en.src==='fichaje'&&!en.out; const hecho=en&&en.src==='fichaje'&&en.out;
     return `<button class="k-emp ${dentro?'dentro':''}" data-e="${e.id}"><span class="n">${esc(e.nombre)}</span><span class="r ${e.rol}">${rolLabel(e.rol)}</span>${hecho?`<span class="hecho">✓ ${en.in}–${en.out}</span>`:''}<span class="st">${dentro?`Dentro desde ${en.in}`:hecho?'Turno fichado':'Tocá para fichar'}</span></button>`;
@@ -1434,6 +1437,18 @@ function chequearAlarmas(){
   actualizarAlarma();
 }
 setInterval(chequearAlarmas,10000);
+
+/* ---- actualización automática de la página ---- */
+let etagActual=null;
+async function chequearVersion(){
+  if(mode!=='sb'||location.protocol==='file:') return;
+  try{
+    const r=await fetch(location.pathname+'?_v='+Date.now(),{method:'HEAD',cache:'no-store'}); const et=r.headers.get('etag')||r.headers.get('last-modified'); if(!et) return;
+    if(etagActual===null){ etagActual=et; return; }
+    if(et!==etagActual&&kiosk&&!$('kModal').classList.contains('on')&&!alarmaAct&&!fichando){ location.reload(); }
+  }catch(e){}
+}
+setTimeout(chequearVersion,5000); setInterval(chequearVersion,10*60000);
 
 /* ======================= arranque ======================= */
 renderAll();
