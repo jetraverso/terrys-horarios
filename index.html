@@ -247,6 +247,24 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .duenorow .idx{font-family:var(--display);font-size:18px;color:var(--muted)}
 .sesion{font-size:12px;opacity:.75}
 
+/* ---------- editar fichaje ---------- */
+#fEdit{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+#fEdit.on{display:flex}
+.fe-box{background:var(--surface);color:var(--ink);border-radius:16px;padding:22px;width:min(420px,100%);box-shadow:var(--shadow)}
+.fe-box h2{font-family:var(--display);font-size:28px;letter-spacing:.03em;margin-bottom:4px}
+.fe-box .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+.fe-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fe-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fe-grid label.full{grid-column:1 / -1}
+.fe-grid input,.fe-grid select{padding:9px 10px;border:1px solid var(--line-2);border-radius:8px;background:var(--paper);font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink);width:100%;min-width:0}
+.fe-act{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.fe-act .btn{flex:1}
+.fe-err{color:var(--danger);font-weight:600;font-size:13px;min-height:18px;margin-top:8px}
+.btn.mini2{padding:4px 9px;font-size:12px}
+.duenorow.perm{grid-template-columns:24px minmax(0,1fr) 120px auto}
+.duenorow .tog{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-2);white-space:nowrap}
+@media (max-width:520px){.duenorow.perm{grid-template-columns:24px minmax(0,1fr) 100px}.duenorow.perm .tog{grid-column:2 / -1}}
+
 /* ---------- settings ---------- */
 .set{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.set{grid-template-columns:1fr}}
@@ -443,6 +461,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
       <div class="ffil">
         <select id="fPer"><option value="hoy">Hoy</option><option value="7" selected>Últimos 7 días</option><option value="mes">Este mes</option><option value="mesant">Mes anterior</option><option value="30">Últimos 30 días</option></select>
         <select id="fEmp"><option value="">Todos</option></select>
+        <button class="btn" id="fAddBtn" type="button" hidden>Agregar fichaje</button>
       </div>
     </div>
     <div class="cards" id="fCards"></div>
@@ -521,6 +540,18 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
   <div class="row"><button class="btn primary" id="popOk">Guardar</button><button class="btn danger" id="popDel">Quitar turno</button><button class="btn" id="popClose">Cerrar</button></div>
 </div>
 
+<div id="fEdit"><div class="fe-box">
+  <h2 id="feTitle">Editar fichaje</h2><div class="sub" id="feSub"></div>
+  <div class="fe-grid">
+    <label class="full">Persona<select id="feEmp"></select></label>
+    <label>Fecha<input type="date" id="feFecha"></label>
+    <label>Turno<select id="feShift"><option value="m">Mañana</option><option value="n">Noche</option></select></label>
+    <label>Entrada<input type="time" id="feIn"></label>
+    <label>Salida<input type="time" id="feOut"></label>
+  </div>
+  <div class="fe-err" id="feErr"></div>
+  <div class="fe-act"><button class="btn primary" id="feSave" type="button">Guardar</button><button class="btn danger" id="feDel" type="button">Borrar fichaje</button><button class="btn" id="feCancel" type="button">Cancelar</button></div>
+</div></div>
 <div id="fotoBig"><img alt="Foto del fichaje"></div>
 
 <!-- ================= BLOQUEO ================= -->
@@ -552,7 +583,7 @@ window.addEventListener('error',function(ev){ try{ var el=document.getElementByI
 const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const APP_VERSION='2026-09-15b';
+const APP_VERSION='2026-09-18';
 const clon=o=>JSON.parse(JSON.stringify(o));
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -603,7 +634,7 @@ const SUPABASE_URL='https://xhtsgotuffrqxpzchwjq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhodHNnb3R1ZmZycXhwemNod2pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTQxNTcsImV4cCI6MjEwNDg5MDE1N30.SoDSBqxze3sjcbZIO7uPPFRbTZU--3mLUc3jsAPyPYE';
 function sbCfg(){ if(SUPABASE_URL&&SUPABASE_KEY) return {url:SUPABASE_URL,key:SUPABASE_KEY,fija:true}; try{ const j=JSON.parse(localStorage.getItem('terrys-sb')||'null'); return j&&j.url&&j.key?j:null; }catch(e){ return null; } }
 const sbUrl=()=>{ const c=sbCfg(); return c?c.url:''; };
-const SB_FN={log:'get_log',autoClose:'auto_close',ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
+const SB_FN={editFichaje:'edit_fichaje',log:'get_log',autoClose:'auto_close',ping:'ping',kiosk:'kiosk_data',pin:'check_pin',pinAdmin:'check_admin',load:'load_all',saveConfig:'save_config',setTurno:'set_turno',setTurnos:'set_turnos',setAjuste:'set_ajuste',fichar:'fichar',foto:'get_foto',authDevice:'authorize_device',devices:'list_devices',revokeDevice:'revoke_device'};
 const devToken=()=>{ try{ return localStorage.getItem('terrys-device')||''; }catch(e){ return ''; } };
 async function sbCall(cfg,action,data){
   const r=await fetch(`${cfg.url.replace(/\/+$/,'')}/rest/v1/rpc/${SB_FN[action]}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+cfg.key},body:JSON.stringify({p:data||{}})});
@@ -614,7 +645,7 @@ async function sbCall(cfg,action,data){
   return j.data;
 }
 const sb=(action,data)=>sbCall(sbCfg(),action,data);
-function sbErr(e){ console.error(e); if(e&&e.code==='pin'){ adminPin=null; alert('El PIN del dueño cambió. Volvé a ingresarlo.'); setKiosk(true); } else if(e&&e.code==='device'){ try{localStorage.removeItem('terrys-device');}catch(x){} showAuth('Este dispositivo fue dado de baja.'); } else $('sync').textContent='error al guardar'; }
+function sbErr(e){ console.error(e); if(e&&e.code==='perm'){ alert(e.message||'No tenés permiso para hacer eso.'); if(adminPin) sbLoad().catch(()=>{}); return; } if(e&&e.code==='pin'){ adminPin=null; alert('El PIN del dueño cambió. Volvé a ingresarlo.'); setKiosk(true); } else if(e&&e.code==='device'){ try{localStorage.removeItem('terrys-device');}catch(x){} showAuth('Este dispositivo fue dado de baja.'); } else $('sync').textContent='error al guardar'; }
 const fotoUrl=id=>mode==='sb'?'':'/_blob/'+id;   // en modo Supabase la foto se pide aparte (cargarFotos)
 function fotoOpen(id,src){ const ov=$('fotoBig'); ov.querySelector('img').src=src||fotoUrl(id); ov.classList.add('on'); }
 const fotoCache={};
@@ -639,8 +670,8 @@ const LS='terrys-horarios-v1';
 function lsLoad(){try{return JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){return {};}}
 function lsSave(all){try{localStorage.setItem(LS,JSON.stringify(all));}catch(e){}}
 
-function normEntry(v){ if(!v||typeof v!=='object'||!v.src) return null; const e={src:v.src}; if(v.in)e.in=v.in; if(v.out)e.out=v.out; if(typeof v.min==='number')e.min=v.min; if(typeof v.fin==='string'&&v.fin)e.fin=v.fin; if(typeof v.fout==='string'&&v.fout)e.fout=v.fout; if(v.auto===true)e.auto=true; if(typeof v.por==='string'&&v.por)e.por=v.por; return e; }
-const fullEntry=en=>en?{src:en.src,in:en.in||null,out:en.out||null,min:typeof en.min==='number'?en.min:null,fin:en.fin||null,fout:en.fout||null,auto:en.auto===true?true:null}:null;
+function normEntry(v){ if(!v||typeof v!=='object'||!v.src) return null; const e={src:v.src}; if(v.in)e.in=v.in; if(v.out)e.out=v.out; if(typeof v.min==='number')e.min=v.min; if(typeof v.fin==='string'&&v.fin)e.fin=v.fin; if(typeof v.fout==='string'&&v.fout)e.fout=v.fout; if(v.auto===true)e.auto=true; if(typeof v.por==='string'&&v.por)e.por=v.por; if(typeof v.edit==='string'&&v.edit)e.edit=v.edit; return e; }
+const fullEntry=en=>en?{src:en.src,in:en.in||null,out:en.out||null,min:typeof en.min==='number'?en.min:null,fin:en.fin||null,fout:en.fout||null,auto:en.auto===true?true:null,edit:en.edit||null}:null;
 function cleanMes(raw){const out={turnos:{},ajustes:{}};const aj=(raw&&raw.ajustes)||{};for(const e in aj){const a=aj[e];if(a&&typeof a==='object')out.ajustes[e]={min:typeof a.min==='number'?a.min:0,extra:typeof a.extra==='number'?a.extra:0,nota:typeof a.nota==='string'?a.nota:''};}const t=(raw&&raw.turnos)||{};for(const f in t){for(const e in t[f]){for(const s of ['m','n']){const v=normEntry(t[f][e]&&t[f][e][s]);if(v){((out.turnos[f]=out.turnos[f]||{})[e]=out.turnos[f][e]||{})[s]=v;}}}}return out;}
 
 const store={
@@ -779,6 +810,8 @@ function logTexto(r){
     case 'turno': { const en=d.entry; const t=config.turnos[d.turno]?config.turnos[d.turno].nombre.toLowerCase():d.turno; return en?`${en.src==='manual'?'Ajustó horas de':'Marcó'} ${t} del ${fecha(d.fecha)} a ${emp(d.emp)}`:`Quitó ${t} del ${fecha(d.fecha)} a ${emp(d.emp)}`; }
     case 'turnos_lote': return `Planificó ${d.n} turnos (${fecha(d.desde)} a ${fecha(d.hasta)})`;
     case 'ajuste_sueldo': return `Ajuste de sueldo de ${emp(d.emp)} en ${d.mes}: ${d.min?fmt(Math.abs(d.min))+(d.min<0?' menos':' más'):''}${d.min&&d.extra?', ':''}${d.extra?fmtEur(d.extra)+' extra':''}`;
+    case 'fichaje_edit': { const t=config.turnos[d.turno]?config.turnos[d.turno].nombre.toLowerCase():d.turno; const a=d.antes||{}, b=d.despues||{}; return (a.in?`Corrigió el fichaje de ${emp(d.emp)} (${t} del ${fecha(d.fecha)}): ${a.in}–${a.out||'sin salida'} → ${b.in}–${b.out||'sin salida'}`:`Agregó un fichaje a ${emp(d.emp)} (${t} del ${fecha(d.fecha)}): ${b.in}–${b.out||'sin salida'}`); }
+    case 'fichaje_borrado': { const t=config.turnos[d.turno]?config.turnos[d.turno].nombre.toLowerCase():d.turno; const a=d.antes||{}; return `Borró el fichaje de ${emp(d.emp)} (${t} del ${fecha(d.fecha)}): ${a.in||'?'}–${a.out||'sin salida'}`; }
     case 'dispositivo_alta': return `Autorizó el dispositivo "${d.nombre||''}"`;
     case 'dispositivo_baja': return `Dio de baja el dispositivo "${d.nombre||''}"`;
     default: return r.accion;
@@ -834,6 +867,7 @@ function mergeConfig(c){
   if(typeof c.pinAdmin==='string') out.pinAdmin=c.pinAdmin;
   if(Array.isArray(c.duenos)&&c.duenos.some(d=>d&&d.pin)) out.duenos=out.duenos.map((d,i)=>Object.assign({},d,clon(c.duenos[i]||{nombre:'',pin:''})));
   else out.duenos[0].pin=out.pinAdmin||'1234';
+  out.duenos.forEach(d=>{ if(typeof d.editaFichajes!=='boolean') d.editaFichajes=d.id==='d1'; });
   out.pinAdmin=(out.duenos.find(d=>d.pin)||{pin:'1234'}).pin;
   out.contarReales=!!c.contarReales;
   out.fotos=c.fotos!==false;
@@ -960,6 +994,7 @@ function openPop(p){
   if(en&&en.src==='fichaje') fi=`<div class="fichinfo">Fichó entrada ${en.in}${en.out?` y salida ${en.out}${en.auto?' (automática)':''} · ${fmt(realMin(en))} reales`:' · todavía no fichó salida'}</div>`;
   else if(en&&en.src==='manual') fi=`<div class="fichinfo" style="background:var(--surface-2);color:var(--ink-2)">Horas ajustadas a mano</div>`;
   if(en&&(en.fin||en.fout)) fi+=`<div class="fotos">${en.fin?`<figure><img src="${fotoUrl(en.fin)}" alt="Foto entrada" data-id="${en.fin}" referrerpolicy="no-referrer">Entrada ${en.in||''}</figure>`:''}${en.fout?`<figure><img src="${fotoUrl(en.fout)}" alt="Foto salida" data-id="${en.fout}" referrerpolicy="no-referrer">Salida ${en.out||''}</figure>`:''}</div>`;
+  if(en&&en.edit) fi+=`<div class="meta" style="margin-top:6px">Fichaje corregido por ${esc(en.edit)}</div>`;
   if(en&&en.por) fi+=`<div class="meta" style="margin-top:6px">Cargado por ${esc(en.por)}</div>`;
   $('popFich').innerHTML=fi; cargarFotos($('popFich'));
   $('popHoras').value=en?fmtShort(minutosDe(en,s)):fmtShort(nominal(s));
@@ -1169,17 +1204,56 @@ function renderFichajes(){
     <div class="card"><div class="k">En curso</div><div class="v num" style="color:${abiertos?'var(--warn)':'inherit'}">${abiertos}</div><div class="s">sin salida fichada</div></div>
     <div class="card"><div class="k">Sin foto</div><div class="v num">${sinFoto}</div><div class="s">fichajes sin ninguna foto</div></div>`;
   const th=(id,alt)=>id?`<img class="th" data-id="${id}" alt="${alt}" loading="lazy">`:`<span class="th none" title="Sin foto"></span>`;
-  let h=`<thead><tr><th style="text-align:left">Turno</th><th style="text-align:left">Persona</th><th>Entrada</th><th>Salida</th><th>Horas reales</th><th>Foto entrada</th><th>Foto salida</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th style="text-align:left">Turno</th><th style="text-align:left">Persona</th><th>Entrada</th><th>Salida</th><th>Horas reales</th><th>Foto entrada</th><th>Foto salida</th>${puedeFichajes()?'<th></th>':''}</tr></thead><tbody>`;
   let dia='';
   for(const r of rows){
-    if(r.f!==dia){ dia=r.f; const d=fromIso(dia); h+=`<tr class="dia ${esFestivo(dia)?'festivo':''}"><td colspan="7">${DOW[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}${esFestivo(dia)?'<span class="fbadge fb">Festivo</span>':''}</td></tr>`; }
+    if(r.f!==dia){ dia=r.f; const d=fromIso(dia); h+=`<tr class="dia ${esFestivo(dia)?'festivo':''}"><td colspan="8">${DOW[(d.getDay()+6)%7]} ${d.getDate()} de ${MESES[d.getMonth()]}${esFestivo(dia)?'<span class="fbadge fb">Festivo</span>':''}</td></tr>`; }
     const e=config.empleados.find(x=>x.id===r.e)||{nombre:r.e,rol:'camarero'};
-    h+=`<tr><td class="tl"><span class="tpill ${r.sh}">${config.turnos[r.sh].nombre}</span></td><td class="tl"><b>${esc(e.nombre)}</b> <span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td><td class="num">${r.en.in}</td><td class="num ${r.en.out?'':'abierto'}">${r.en.out||'en curso'}${r.en.auto?'<span class="auto-tag">auto</span>':''}</td><td class="hreal num">${r.en.out?fmt(realMin(r.en)):'—'}</td><td>${th(r.en.fin,'Foto de entrada')}</td><td>${th(r.en.fout,'Foto de salida')}</td></tr>`;
+    h+=`<tr><td class="tl"><span class="tpill ${r.sh}">${config.turnos[r.sh].nombre}</span></td><td class="tl"><b>${esc(e.nombre)}</b> <span class="rol ${e.rol}">${rolLabel(e.rol)}</span></td><td class="num">${r.en.in}</td><td class="num ${r.en.out?'':'abierto'}">${r.en.out||'en curso'}${r.en.auto?'<span class="auto-tag">auto</span>':''}${r.en.edit?`<span class="auto-tag" title="Corregido por ${esc(r.en.edit)}">editado</span>`:''}</td><td class="hreal num">${r.en.out?fmt(realMin(r.en)):'—'}</td><td>${th(r.en.fin,'Foto de entrada')}</td><td>${th(r.en.fout,'Foto de salida')}</td>${puedeFichajes()?`<td><button class="btn mini2" data-ed="${r.f}|${r.e}|${r.sh}" type="button">Editar</button></td>`:''}</tr>`;
   }
-  if(!rows.length) h+=`<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted)">No hay fichajes en este período.</td></tr>`;
+  if(!rows.length) h+=`<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">No hay fichajes en este período.</td></tr>`;
   $('fTbl').innerHTML=h+'</tbody>';
+  $('fAddBtn').hidden=!puedeFichajes();
   cargarFotos($('fTbl'));
 }
+/* ---- editar / agregar / borrar fichaje ---- */
+let feCtx=null;
+function abrirFichaje(f,e,sh){
+  const en=f?getEntry(f,e,sh):null; feCtx={nuevo:!en,f,e,sh};
+  $('feEmp').innerHTML=empActivos().map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
+  $('feTitle').textContent=en?'Editar fichaje':'Agregar fichaje';
+  $('feSub').textContent=en?(en.edit?`Ya fue corregido por ${en.edit}. `:'')+'Las fotos se conservan.':'Para cargar un fichaje que no se hizo desde la pantalla del local.';
+  $('feEmp').value=e||(empActivos()[0]||{}).id||''; $('feFecha').value=f||iso(new Date()); $('feShift').value=sh||turnoActual();
+  $('feIn').value=en?en.in:config.turnos[$('feShift').value].ini; $('feOut').value=en&&en.out?en.out:'';
+  ['feEmp','feFecha','feShift'].forEach(id=>$(id).disabled=!!en);
+  $('feDel').style.display=en?'':'none'; $('feErr').textContent=''; $('fEdit').classList.add('on');
+}
+function cerrarFichaje(){ $('fEdit').classList.remove('on'); feCtx=null; }
+$('fTbl').addEventListener('click',e=>{ const b=e.target.closest('[data-ed]'); if(!b) return; const p=b.dataset.ed.split('|'); abrirFichaje(p[0],p[1],p[2]); });
+$('fAddBtn').onclick=()=>abrirFichaje(null,null,null);
+$('feCancel').onclick=cerrarFichaje;
+$('fEdit').addEventListener('click',e=>{ if(e.target===$('fEdit')) cerrarFichaje(); });
+async function guardarFichaje(borrar){
+  if(!feCtx) return; const f=$('feFecha').value, e=$('feEmp').value, sh=$('feShift').value, hin=$('feIn').value, hout=$('feOut').value;
+  if(!borrar){ if(!f||!e){ $('feErr').textContent='Falta la fecha o la persona.'; return; } if(!hin){ $('feErr').textContent='Falta la hora de entrada.'; return; }
+    if(feCtx.nuevo&&getEntry(f,e,sh)&&getEntry(f,e,sh).in){ $('feErr').textContent='Ya hay un fichaje de esa persona en ese turno. Editalo desde la lista.'; return; } }
+  else if(!confirm('¿Borrar este fichaje? Las fotos dejan de estar asociadas al turno. Queda anotado en el registro de cambios.')) return;
+  $('feErr').textContent='Guardando…';
+  try{
+    if(mode==='sb'){
+      const d=await sb('editFichaje',{pin:adminPin,fecha:f,emp:e,shift:sh,in:hin,out:hout,borrar:!!borrar});
+      const m=meses[mk(f)]=meses[mk(f)]||{turnos:{},ajustes:{}}; const cel=(m.turnos[f]=m.turnos[f]||{}); cel[e]=cel[e]||{};
+      const en=normEntry(d.entry); if(en) cel[e][sh]=en; else delete cel[e][sh];
+      renderAll(); renderLog();
+    }else{
+      if(borrar) await store.setTurno(f,e,sh,null);
+      else { const act=getEntry(f,e,sh)||{}; const en={src:'fichaje',in:hin,fin:act.fin,fout:act.fout,edit:adminNombre||'Dueño'}; if(hout){ let mn=hm2min(hout)-hm2min(hin); if(mn<0)mn+=1440; en.out=hout; en.min=mn; } await store.setTurno(f,e,sh,en); }
+    }
+    cerrarFichaje();
+  }catch(err){ if(err&&err.code==='perm'){ $('feErr').textContent=err.message; } else if(err&&err.code==='http'){ $('feErr').textContent='Falta actualizar Supabase: volvé a ejecutar schema.sql.'; } else { $('feErr').textContent='No se pudo guardar: '+(err.message||err); } }
+}
+$('feSave').onclick=()=>guardarFichaje(false);
+$('feDel').onclick=()=>guardarFichaje(true);
 
 /* ======================= AJUSTES ======================= */
 let ajustesDirty=false, ajustesRendered=false;
@@ -1190,7 +1264,8 @@ function renderAjustes(force){
   renderFestList();
   $('tMi').value=config.turnos.m.ini;$('tMf').value=config.turnos.m.fin;$('tNi').value=config.turnos.n.ini;$('tNf').value=config.turnos.n.fin;
   $('cReal').checked=config.contarReales; $('cFoto').checked=config.fotos; updDur();
-  $('duenoList').innerHTML=config.duenos.map((d,i)=>`<div class="duenorow" data-i="${i}"><span class="idx">${i+1}</span><input type="text" placeholder="${i?'Lugar libre':'Nombre'}" value="${esc(d.nombre)}" data-k="nombre"><input type="text" class="pin" inputmode="numeric" maxlength="8" placeholder="PIN" value="${esc(d.pin)}" data-k="pin"></div>`).join('');
+  const pf=puedeFichajes();
+  $('duenoList').innerHTML=config.duenos.map((d,i)=>{ const ef=typeof d.editaFichajes==='boolean'?d.editaFichajes:d.id==='d1'; return `<div class="duenorow perm" data-i="${i}"><span class="idx">${i+1}</span><input type="text" placeholder="${i?'Lugar libre':'Nombre'}" value="${esc(d.nombre)}" data-k="nombre" ${pf?'':'disabled'}><input type="text" class="pin" inputmode="numeric" maxlength="8" placeholder="PIN" value="${pf?esc(d.pin):(d.pin?'••••':'')}" data-k="pin" ${pf?'':'disabled'}><label class="tog"><input type="checkbox" data-k="editaFichajes" ${ef?'checked':''} ${pf?'':'disabled'}>edita fichajes</label></div>`; }).join('')+(pf?'':'<p style="font-size:13px;color:var(--muted)">Solo un dueño con permiso para editar fichajes puede cambiar esta lista.</p>');
   const al=config.alarmas; $('alOn').checked=al.on; $('alMe').value=al.m.ent; $('alMs').value=al.m.sal; $('alNe').value=al.n.ent; $('alNs').value=al.n.sal; $('alGr').value=al.gracia;
 }
 function renderFestList(){
@@ -1206,7 +1281,11 @@ $('alTest').onclick=()=>{ audioUnlock(); sonarAlarma(); };
 $('btnSave').onclick=async()=>{
   document.querySelectorAll('#empList .emprow').forEach(row=>{const e=config.empleados[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{e[inp.dataset.k]=inp.type==='checkbox'?inp.checked:inp.value.trim();});});
   config.turnos.m.ini=$('tMi').value||'12:00';config.turnos.m.fin=$('tMf').value||'13:50';config.turnos.n.ini=$('tNi').value||'19:30';config.turnos.n.fin=$('tNf').value||'23:30';
-  document.querySelectorAll('#duenoList .duenorow').forEach(row=>{const d=config.duenos[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{d[inp.dataset.k]=inp.value.trim();});});
+  if(puedeFichajes()){
+    const yoIdx=config.duenos.indexOf(duenoActual());
+    document.querySelectorAll('#duenoList .duenorow').forEach(row=>{const d=config.duenos[+row.dataset.i];row.querySelectorAll('[data-k]').forEach(inp=>{d[inp.dataset.k]=inp.type==='checkbox'?inp.checked:inp.value.trim();});});
+    if(!config.duenos.some(d=>d.pin&&d.editaFichajes)){ alert('Tiene que quedar al menos un dueño con permiso para editar fichajes. Te lo dejo activado a vos.'); (config.duenos[yoIdx>=0?yoIdx:0]).editaFichajes=true; }
+  }
   if(!config.duenos.some(d=>d.pin)){ alert('Tiene que haber al menos un dueño con PIN.'); config.duenos[0].pin='1234'; }
   config.duenos.forEach(d=>{ if(d.pin&&!d.nombre) d.nombre='Dueño'; });
   config.pinAdmin=config.duenos.find(d=>d.pin).pin;
@@ -1293,6 +1372,8 @@ function renderKModal(){
     box.innerHTML=`<h2>Listo, ${esc(kSel.nombre)}</h2><div class="k-done" id="kOkMsg"></div><div class="sub" id="kOkFoto"></div>`;
   }
 }
+const duenoActual=()=>mode==='sb'?(config.duenos.find(d=>d.pin&&d.pin===adminPin)||null):(config.duenos.find(d=>d.pin&&d.nombre===adminNombre)||config.duenos[0]);
+const puedeFichajes=()=>{ const d=duenoActual(); if(!d) return mode!=='sb'; return typeof d.editaFichajes==='boolean'?d.editaFichajes:d.id==='d1'; };
 const duenosOk=pin=>config.duenos.find(d=>d.pin&&d.pin===pin)||null;
 const duenoLens=()=>{const ls=config.duenos.filter(d=>d.pin).map(d=>d.pin.length);return ls.length?{min:Math.min.apply(null,ls),max:Math.max.apply(null,ls)}:{min:4,max:4};};
 function kNeed(){ if(mode==='sb') return kStep==='admin'?(kioskMeta.adminPinLen||4):(kSel&&kSel.pinLen||4); if(kStep==='admin') return duenoLens().min; return (kSel&&kSel.pin||'').length; }

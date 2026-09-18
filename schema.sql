@@ -97,6 +97,13 @@ language sql security definer set search_path = public as $$
   select coalesce(nullif(_admin_of(p)->>'nombre',''), 'Dueño')
 $$;
 
+-- ¿Este dueño puede editar fichajes? Por defecto solo el primero (d1).
+create or replace function _puede_fichajes(p jsonb) returns boolean
+language sql security definer set search_path = public as $$
+  select case when _admin_of(p) is null then false
+    else coalesce((_admin_of(p)->>'editaFichajes')::boolean, coalesce(_admin_of(p)->>'id','') = 'd1') end
+$$;
+
 -- Largo mínimo y máximo de los PIN de dueño (para el teclado de la pantalla de fichaje).
 create or replace function _admin_pin_lens() returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -141,7 +148,7 @@ language sql as $$ select jsonb_build_object('ok', true, 'data', 'pong') $$;
 
 create or replace function check_admin(p jsonb) returns jsonb
 language sql security definer set search_path = public as $$
-  select jsonb_build_object('ok', true, 'data', jsonb_build_object('ok', _is_admin(p), 'len', _admin_pin_lens()->'min', 'max', _admin_pin_lens()->'max', 'nombre', case when _is_admin(p) then _admin_name(p) else null end))
+  select jsonb_build_object('ok', true, 'data', jsonb_build_object('ok', _is_admin(p), 'len', _admin_pin_lens()->'min', 'max', _admin_pin_lens()->'max', 'nombre', case when _is_admin(p) then _admin_name(p) else null end, 'editaFichajes', _puede_fichajes(p)))
 $$;
 
 create or replace function check_pin(p jsonb) returns jsonb
@@ -220,6 +227,9 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
   if jsonb_typeof(p->'config') <> 'object' then return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Config inválida'); end if;
+  if not _puede_fichajes(p) and jsonb_typeof(_cfg()->'duenos') = 'array' and (p->'config'->'duenos') is distinct from (_cfg()->'duenos') then
+    return jsonb_build_object('ok', false, 'code', 'perm', 'error', 'Solo un dueño con permiso para editar fichajes puede cambiar los dueños');
+  end if;
   perform _log(p, 'config', jsonb_build_object('cambios', (select coalesce(jsonb_agg(k), '[]'::jsonb) from (select key k from jsonb_each(p->'config') union select key from jsonb_each(_cfg())) x where (p->'config')->k is distinct from _cfg()->k)));
   insert into app_config (id, data) values (1, p->'config')
     on conflict (id) do update set data = excluded.data, updated_at = now();
@@ -241,6 +251,9 @@ create or replace function set_turno(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  if not _puede_fichajes(p) and exists (select 1 from turnos where fecha = (p->>'fecha')::date and emp = p->>'emp' and shift = p->>'shift' and entry->>'in' is not null) then
+    return jsonb_build_object('ok', false, 'code', 'perm', 'error', 'No tenés permiso para modificar un fichaje');
+  end if;
   perform _upsert_turno((p->>'fecha')::date, p->>'emp', p->>'shift', case when _clean_entry(p->'entry') is null then null else _clean_entry(p->'entry') || jsonb_build_object('por', _admin_name(p)) end);
   perform _log(p, 'turno', jsonb_build_object('fecha', p->>'fecha', 'emp', p->>'emp', 'turno', p->>'shift', 'entry', _clean_entry(p->'entry')));
   return jsonb_build_object('ok', true, 'data', true);
@@ -255,6 +268,7 @@ begin
   for d in select * from jsonb_each(coalesce(p->'changes','{}'::jsonb)) loop
     for e in select * from jsonb_each(d.value) loop
       for s in select * from jsonb_each(e.value) loop
+        if not _puede_fichajes(p) and exists (select 1 from turnos where fecha = d.key::date and emp = e.key and shift = s.key and entry->>'in' is not null) then continue; end if;
         perform _upsert_turno(d.key::date, e.key, s.key, case when _clean_entry(s.value) is null then null else _clean_entry(s.value) || jsonb_build_object('por', _admin_name(p)) end); n := n + 1;
       end loop;
     end loop;
@@ -331,6 +345,32 @@ begin
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('cerrados', n));
 end $$;
 
+-- Corregir, agregar o borrar un fichaje. Requiere un dueño con permiso "editaFichajes".
+create or replace function edit_fichaje(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare f date := (p->>'fecha')::date; e text := p->>'emp'; s text := p->>'shift'; hin text := coalesce(p->>'in',''); hout text := coalesce(p->>'out','');
+  actual jsonb; nuevo jsonb; mins int;
+begin
+  if not _is_admin(p) then return jsonb_build_object('ok', false, 'code', 'pin', 'error', 'PIN incorrecto'); end if;
+  if not _puede_fichajes(p) then return jsonb_build_object('ok', false, 'code', 'perm', 'error', 'No tenés permiso para editar fichajes'); end if;
+  if f is null or coalesce(e,'') = '' or s not in ('m','n') then return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Datos incompletos'); end if;
+  select entry into actual from turnos where fecha = f and emp = e and shift = s;
+  if coalesce((p->>'borrar')::boolean, false) then
+    perform _log(p, 'fichaje_borrado', jsonb_build_object('fecha', p->>'fecha', 'emp', e, 'turno', s, 'antes', jsonb_build_object('in', actual->>'in', 'out', actual->>'out')));
+    delete from turnos where fecha = f and emp = e and shift = s;
+    return jsonb_build_object('ok', true, 'data', jsonb_build_object('entry', null));
+  end if;
+  if hin !~ '^\d{2}:\d{2}$' or (hout <> '' and hout !~ '^\d{2}:\d{2}$') then return jsonb_build_object('ok', false, 'code', 'bad', 'error', 'Hora inválida'); end if;
+  nuevo := (coalesce(actual, '{}'::jsonb) - 'out' - 'min' - 'auto') || jsonb_build_object('src', 'fichaje', 'in', hin, 'edit', _admin_name(p));
+  if hout <> '' then
+    mins := ((extract(epoch from (hout::time - hin::time)) / 60)::int + 1440) % 1440;
+    nuevo := nuevo || jsonb_build_object('out', hout, 'min', mins);
+  end if;
+  perform _upsert_turno(f, e, s, nuevo);
+  perform _log(p, 'fichaje_edit', jsonb_build_object('fecha', p->>'fecha', 'emp', e, 'turno', s, 'antes', jsonb_build_object('in', actual->>'in', 'out', actual->>'out'), 'despues', jsonb_build_object('in', hin, 'out', nullif(hout,''))));
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('entry', nuevo));
+end $$;
+
 -- Registro de cambios (últimos N). Requiere PIN del dueño.
 create or replace function get_log(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -352,10 +392,10 @@ begin
 end $$;
 
 -- ---------- permisos ----------
-revoke execute on function _cfg(), _admin_of(jsonb), _is_admin(jsonb), _admin_name(jsonb), _admin_pin_lens(), _log(jsonb,text,jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
+revoke execute on function _cfg(), _admin_of(jsonb), _is_admin(jsonb), _admin_name(jsonb), _puede_fichajes(jsonb), _admin_pin_lens(), _log(jsonb,text,jsonb), _emp_pin(text), _device_ok(jsonb), _upsert_turno(date,text,text,jsonb) from public, anon, authenticated;
 grant execute on function ping(jsonb), check_admin(jsonb), check_pin(jsonb), kiosk_data(jsonb), load_all(jsonb), save_config(jsonb),
   set_turno(jsonb), set_turnos(jsonb), set_ajuste(jsonb), fichar(jsonb), get_foto(jsonb), import_foto(jsonb), auto_close(jsonb),
-  authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb), get_log(jsonb) to anon, authenticated;
+  authorize_device(jsonb), list_devices(jsonb), revoke_device(jsonb), get_log(jsonb), edit_fichaje(jsonb) to anon, authenticated;
 
 -- Para que PostgREST vea las funciones nuevas enseguida
 notify pgrst, 'reload schema';
