@@ -572,6 +572,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
   </div>
   <div class="k-alarma" id="kAlarma"><div><div class="t" id="kAlT"></div><div class="q" id="kAlQ"></div></div><button id="kAlOk" type="button">Entendido</button></div>
   <div class="k-grid" id="kGrid"></div>
+  <video id="camBase" autoplay playsinline muted style="position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none"></video>
   <div class="k-modal" id="kModal"><div class="k-box" id="kBox"></div></div>
 </div>
 
@@ -583,7 +584,7 @@ window.addEventListener('error',function(ev){ try{ var el=document.getElementByI
 const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const APP_VERSION='2026-09-18';
+const APP_VERSION='2026-09-19';
 const clon=o=>JSON.parse(JSON.stringify(o));
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -1302,7 +1303,7 @@ function turnoActual(){ // qué turno corresponde según la hora
   return now<corte?'m':'n';
 }
 function setKiosk(on){
-  kiosk=on; $('kiosk').classList.toggle('on',on); document.body.style.overflow=on?'hidden':''; if(!on){ stopCam(); ocultarAlarma(); }
+  kiosk=on; $('kiosk').classList.toggle('on',on); document.body.style.overflow=on?'hidden':''; if(!on){ camOff(); ocultarAlarma(); } else { camInit(); }
   clearInterval(kioskPoll); if(on&&mode==='sb'){ adminPin=null; adminNombre=''; clearInterval(sbPoll); $('panelDev').hidden=true; $('panelLog').hidden=true; kioskRefresh(); kioskPoll=setInterval(kioskRefresh,30000); }
   try{ if(on) localStorage.setItem('terrys-kiosk','1'); else localStorage.removeItem('terrys-kiosk'); }catch(e){}
   if(on){ kSel=null; kStep=null; $('kModal').classList.remove('on'); renderKiosk(); }
@@ -1324,20 +1325,42 @@ function renderKiosk(){
 let kPinVerified='';
 $('kGrid').addEventListener('click',e=>{const b=e.target.closest('.k-emp');if(!b)return;kSel=config.empleados.find(x=>x.id===b.dataset.e);kPin='';kPinVerified='';const pide=mode==='sb'?(kSel.pinLen||0)>0:!!kSel.pin;kStep=pide?'pin':'accion';renderKModal();});
 let camStream=null;
+// La cámara se pide UNA vez al entrar al modo fichaje y queda encendida (así iOS no vuelve a pedir permiso en cada fichaje).
+// La foto se toma de #camBase, un video permanente que siempre tiene imagen; la vista previa del cartel es aparte.
+function camPosible(){ return config.fotos&&mode!=='local'&&!(mode==='db'&&!assets)&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia; }
+function camViva(){ return !!(camStream&&camStream.getVideoTracks().some(t=>t.readyState==='live')); }
+let camPidiendo=null;
+function camInit(){
+  if(!camPosible()) return Promise.resolve(false);
+  if(camViva()){ const b=$('camBase'); if(b.srcObject!==camStream) b.srcObject=camStream; if(b.paused){ const p=b.play(); if(p&&p.catch) p.catch(()=>{}); } return Promise.resolve(true); }
+  if(camPidiendo) return camPidiendo;
+  camPidiendo=navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960},height:{ideal:1280}},audio:false})
+    .then(st=>{ camStream=st; const b=$('camBase'); b.srcObject=st; const p=b.play(); if(p&&p.catch) p.catch(()=>{}); camPidiendo=null; return true; })
+    .catch(e=>{ console.error('camara',e); camStream=null; camPidiendo=null; return false; });
+  return camPidiendo;
+}
 async function startCam(){
   const v=$('kVid'), st=$('kCamSt'); if(!v) return;
   if(!config.fotos){ $('kCam').hidden=true; return; }
   if(mode==='db'&&!assets){ st.textContent='Sin foto: no hay dónde guardarla'; return; }
   if(mode==='local'){ st.textContent='Sin foto: la página no está conectada'; return; }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ st.textContent='Sin cámara en este dispositivo'; return; }
-  try{
-    if(!camStream) camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960},height:{ideal:1280}},audio:false});
-    v.srcObject=camStream; st.textContent='Mirá a la cámara';
-  }catch(e){ st.textContent='Sin acceso a la cámara · se ficha sin foto'; camStream=null; }
+  st.textContent='Preparando cámara…';
+  const ok=await camInit();
+  const v2=$('kVid'), st2=$('kCamSt'); if(!v2||!st2) return;      // el cartel pudo cerrarse mientras tanto
+  if(!ok){ st2.textContent='Sin acceso a la cámara · se ficha sin foto'; return; }
+  v2.srcObject=camStream; const p=v2.play(); if(p&&p.catch) p.catch(()=>{});
+  st2.textContent='Mirá a la cámara';
 }
-function stopCam(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
+function stopCam(){ /* la cámara queda encendida durante todo el modo fichaje; se apaga en camOff() */ }
+function camOff(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } const b=$('camBase'); if(b) b.srcObject=null; }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&kiosk) camInit(); });
+const videoListo=v=>!!(v&&v.videoWidth>0&&v.readyState>=2);
 async function capturarBlob(){
-  const v=$('kVid'); if(!v||!camStream||!v.videoWidth) return null;
+  if(!camViva()) { const ok=await camInit(); if(!ok) return null; }
+  let v=null;
+  for(let i=0;i<20;i++){ v=videoListo($('camBase'))?$('camBase'):(videoListo($('kVid'))?$('kVid'):null); if(v) break; await new Promise(r=>setTimeout(r,100)); }   // espera hasta 2 s a que haya imagen
+  if(!v) return null;
   try{
     const W=300, H=400, vw=v.videoWidth, vh=v.videoHeight;   // foto vertical 3:4, recorte centrado de lo que ve la cámara
     let sw=vw, sh=vh; if(vw/vh>W/H) sw=Math.round(vh*W/H); else sh=Math.round(vw*H/W);
