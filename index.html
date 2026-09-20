@@ -45,7 +45,7 @@ h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
 .num{font-variant-numeric:tabular-nums}
 
 /* ---------- top bar ---------- */
-.top{position:sticky;top:0;z-index:20;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:18px;padding:10px 20px;flex-wrap:wrap}
+.top{position:sticky;top:0;z-index:20;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:18px;padding:10px clamp(20px,5vw,84px);flex-wrap:wrap}
 .wordmark{font-family:var(--display);font-size:30px;letter-spacing:.04em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--body);font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 .tabs{display:flex;gap:4px;margin-left:auto}
@@ -58,7 +58,7 @@ h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
 .sync{font-size:12px;opacity:.6;letter-spacing:.06em;text-transform:uppercase}
 
 /* ---------- layout ---------- */
-main{max-width:1440px;margin:0 auto;padding:22px 20px 60px}
+main{max-width:1440px;margin:0 auto;padding:22px clamp(20px,5vw,84px) 60px}
 .view{display:none}.view.on{display:block}
 .toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .period{font-family:var(--display);font-size:38px;letter-spacing:.03em;line-height:1}
@@ -143,12 +143,12 @@ table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:800px;
 .card .s{font-size:12px;color:var(--muted);margin-top:4px}
 .card.fest{background:var(--festivo-soft);border-color:transparent}
 .card.fest .v{color:var(--festivo-ink)}
-table.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:760px}
+table.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:600px}
 .tblwrap{overflow-x:auto;border-radius:12px}
-.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right}
-.tbl th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.tbl th,.tbl td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right}
+.tbl th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2)}
 .tbl th:first-child,.tbl td:first-child{text-align:left}
-.tbl td.h{font-family:var(--display);font-size:22px;line-height:1}
+.tbl td.h{font-family:var(--display);font-size:19px;line-height:1}
 .tbl td.fh{color:var(--festivo-ink);font-weight:600}
 .tbl td.rh{color:var(--ok);font-weight:700}
 .tbl td.rh small{color:var(--muted);font-weight:500}
@@ -174,20 +174,21 @@ table.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1
 .mini.on.fich{outline:2px solid var(--ok);outline-offset:-2px}.mini.on.abierto{outline:2px dashed var(--warn);outline-offset:-2px}
 .pl-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .pl-actions .msg{color:var(--ok);font-weight:600;font-size:14px}
-table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
+table.pgrid{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;min-width:820px}
 .pgrid th,.pgrid td{border-bottom:1px solid var(--line);padding:0}
-.pgrid thead th{position:sticky;top:0;background:var(--surface);z-index:2;padding:8px 2px 6px;text-align:center;font-weight:500}
-.pgrid th.d .dow{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.pgrid th.d .dn{font-family:var(--display);font-size:20px;line-height:1}
+.pgrid thead th{position:sticky;top:0;background:var(--surface);z-index:2;padding:6px 0 5px;text-align:center;font-weight:500}
+.pgrid th.d .dow{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pgrid th.d .dn{font-family:var(--display);font-size:16px;line-height:1}
 .pgrid th.d.fin .dow{color:var(--camarero)}
 .pgrid th.d.festivo,.pgrid td.d.festivo{background:var(--festivo-soft)}
 .pgrid th.d.hoy .dn{color:var(--camarero)}
-.pgrid th.emp,.pgrid td.emp{position:sticky;left:0;background:var(--surface);z-index:3;min-width:130px;padding:8px 12px;text-align:left;border-right:1px solid var(--line)}
+.pgrid th.emp,.pgrid td.emp{position:sticky;left:0;background:var(--surface);z-index:3;width:100px;padding:6px 8px;text-align:left;border-right:1px solid var(--line);overflow:hidden}
+.pgrid td.emp .name{font-size:14px}
 .pgrid thead th.emp{z-index:4}
-.pgrid td.d{padding:4px 2px;vertical-align:top}
-.pgrid td.d .mini{width:100%;min-width:26px;display:block;margin-bottom:3px}
-.pgrid td.tot{padding:8px 10px;min-width:96px;border-left:1px solid var(--line);background:var(--surface-2);text-align:right}
-.pgrid th.tot{background:var(--surface-2);border-left:1px solid var(--line)}
+.pgrid td.d{padding:3px 1px;vertical-align:top}
+.pgrid td.d .mini{width:100%;min-width:0;height:20px;font-size:10px;border-radius:4px;display:block;margin-bottom:2px}
+.pgrid td.tot{padding:6px 6px;border-left:1px solid var(--line);background:var(--surface-2);text-align:right;overflow:hidden}
+.pgrid th.tot{background:var(--surface-2);border-left:1px solid var(--line);width:74px}
 .pgrid tfoot td{background:var(--surface-2);padding:6px 2px;font-size:11px;color:var(--ink-2);text-align:center;border-bottom:0}
 .pgrid tfoot td.emp{font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:11px}
 .pgrid tfoot .zero{color:var(--danger);font-weight:700}
@@ -198,15 +199,15 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .sopts select,.sopts input{padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper)}
 .sopts input{width:70px;text-align:right}
 .tbl input.pi,.tbl select.ps{padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--paper);font-variant-numeric:tabular-nums}
-.tbl input.pi{width:88px;text-align:right}
-.tbl select.ps{width:110px}
-.tbl td.eur{font-family:var(--display);font-size:24px;line-height:1;white-space:nowrap}
+.tbl input.pi{width:68px;text-align:right;padding:5px 6px}
+.tbl select.ps{width:98px;padding:5px 4px}
+.tbl td.eur{font-family:var(--display);font-size:20px;line-height:1;white-space:nowrap}
 .tbl td .eq{font-size:12px;color:var(--muted);display:block;margin-top:3px;font-family:var(--body)}
 .tbl td.dim{color:var(--muted)}
 .tbl input.pi.neg{color:var(--danger)}
 .sfoot{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .sfoot .msg{color:var(--ok);font-weight:600;font-size:14px}
-.tbl td.emp-cell{white-space:nowrap}
+.tbl td.emp-cell .rol,.tbl td.tl .rol{margin-top:2px}
 
 /* ---------- fichajes ---------- */
 .ffil{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto}
@@ -219,10 +220,10 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .tpill.m{background:#fbe7c4;color:#7a4a00}.tpill.n{background:#dcd8ee;color:#33306b}
 :root:not([data-theme="light"]) .tpill.m{background:#3d2c0c;color:#f5c778}:root:not([data-theme="light"]) .tpill.n{background:#26243d;color:#c9c3f2}
 @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .tpill.m{background:#fbe7c4;color:#7a4a00} :root:not([data-theme="dark"]) .tpill.n{background:#dcd8ee;color:#33306b} }
-.th{width:54px;height:72px;object-fit:cover;border-radius:7px;background:var(--surface-2);display:inline-block;cursor:zoom-in;transform:scaleX(-1);vertical-align:middle}
+.th{width:45px;height:60px;object-fit:cover;border-radius:7px;background:var(--surface-2);display:inline-block;cursor:zoom-in;transform:scaleX(-1);vertical-align:middle}
 .th.none{cursor:default;opacity:.35;background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 6px,var(--line) 6px,var(--line) 8px)}
 .tbl td.abierto{color:var(--warn);font-weight:700}
-.tbl td.hreal{font-family:var(--display);font-size:22px;line-height:1}
+.tbl td.hreal{font-family:var(--display);font-size:19px;line-height:1}
 .tbl td.dim2{color:var(--muted);font-size:12px}
 
 /* ---------- alarma en kiosco ---------- */
@@ -285,7 +286,7 @@ table.pgrid{border-collapse:separate;border-spacing:0;width:100%}
 .emprow.off input[type=text]{color:var(--muted)}
 .fest-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
 .fest-item .x{background:none;border:0;color:var(--danger);font-weight:700}
-.savebar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin:18px -20px -60px;padding:12px 20px;display:flex;gap:10px;align-items:center}
+.savebar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin:18px calc(-1 * clamp(20px,5vw,84px)) -60px;padding:12px clamp(20px,5vw,84px);display:flex;gap:10px;align-items:center}
 .savebar .msg{color:var(--ok);font-weight:600;font-size:14px}
 .note{background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink-2)}
 
@@ -584,7 +585,7 @@ window.addEventListener('error',function(ev){ try{ var el=document.getElementByI
 const DOW=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DOWS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const APP_VERSION='2026-09-19b';
+const APP_VERSION='2026-09-20';
 const clon=o=>JSON.parse(JSON.stringify(o));
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -1073,7 +1074,7 @@ function renderPlan(){
         h+=`<button class="mini ${en?'on':''} ${e.rol} ${fich?(en.out?'fich':'abierto'):''}" data-f="${f}" data-e="${e.id}" data-s="${s}" title="${config.turnos[s].nombre} ${f}${fich?' · fichado':''}">${s.toUpperCase()}</button>`;}
       h+='</td>';}
     const r=resumen(e.id,dias);
-    h+=`<td class="tot"><div class="big num" style="font-family:var(--display);font-size:22px;line-height:1">${fmt(r.min)}</div><div class="sub" style="font-size:11px;color:var(--muted)">${r.m+r.n} turnos</div></td></tr>`;
+    h+=`<td class="tot"><div class="big num" style="font-family:var(--display);font-size:17px;line-height:1">${fmt(r.min)}</div><div class="sub" style="font-size:11px;color:var(--muted)">${r.m+r.n} turnos</div></td></tr>`;
   }
   if(!emps.length)h+=`<tr><td colspan="33" style="padding:30px;text-align:center;color:var(--muted)">Cargá los empleados en Ajustes.</td></tr>`;
   h+='</tbody><tfoot><tr><td class="emp">Personas</td>';
