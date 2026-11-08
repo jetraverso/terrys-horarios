@@ -2,7 +2,7 @@
 
 Control de días, horarios, horas trabajadas, sueldos y fichaje del personal de Terry's Burgers. Es una sola página (`index.html`) que se publica en GitHub Pages y guarda todo en un proyecto de Supabase.
 
-- **Página:** https://jetraverso.github.io/terrys-horarios/
+- **Página:** https://horarios.terrysburgers.com/ (GitHub Pages con dominio propio: registro CNAME `horarios` → `jetraverso.github.io` en los DNS de GoDaddy y archivo `CNAME` en el repo; la dirección vieja `jetraverso.github.io/terrys-horarios` redirige sola).
 - **Base de datos:** Supabase (gratis). Guarda la configuración, los turnos, los ajustes de sueldo y las fotos del fichaje.
 
 ## Puesta en marcha (una sola vez, 10 minutos)
@@ -62,6 +62,8 @@ La URL y la clave anon van fijas en `index.html`, en las constantes `SUPABASE_UR
 - `index.html` — toda la aplicación.
 - `schema.sql` — tablas y funciones para Supabase.
 - `migrar.py` — importa a Supabase los datos exportados de la versión anterior (carpeta `migracion/`, que no se sube al repositorio).
+
+**Dominio propio (horarios.terrysburgers.com):** en los DNS del dominio (GoDaddy) un registro **CNAME** con nombre `horarios` y valor `jetraverso.github.io`; en el repo, el archivo `CNAME` con `horarios.terrysburgers.com`. Cuando el DNS responde, GitHub emite el certificado HTTPS en unos minutos; después tildar **Enforce HTTPS** en Settings → Pages. Al cambiar de dirección, cada dispositivo (iPad, celulares) vuelve a pedir autorización con el PIN del dueño y el permiso de cámara una vez, porque el navegador los guarda por dirección.
 
 ## Cambiar algo
 
